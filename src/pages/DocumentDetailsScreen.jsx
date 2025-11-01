@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { db } from "../config/firebase";
+import {
+  sendPassengerApprovalEmail,
+  sendPassengerRejectionEmail,
+} from "../services/BrevoEmailService";
 
 const DocumentStatus = {
   PENDING: "PENDING",
@@ -96,6 +100,17 @@ function DocumentDetailsScreen({
           "studentDocument.rejectionReason": null,
           updatedAt: Date.now(),
         });
+
+        // Send approval email for passenger
+        const emailResult = await sendPassengerApprovalEmail(user);
+        if (!emailResult.success) {
+          console.error("Failed to send approval email:", emailResult.error);
+        }
+
+        alert(
+          "Document approved successfully" +
+            (emailResult.success ? " and email sent" : "")
+        );
       } else {
         // Approve driver document
         await updateDoc(doc(db, "users", userId), {
@@ -104,9 +119,10 @@ function DocumentDetailsScreen({
           [`driverData.documents.${documentType}.rejectionReason`]: null,
           updatedAt: Date.now(),
         });
+
+        alert("Document approved successfully");
       }
 
-      alert("Document approved successfully");
       onNavigateBack();
     } catch (err) {
       console.error("Error approving document:", err);
@@ -133,6 +149,19 @@ function DocumentDetailsScreen({
           "studentDocument.verificationDate": Date.now(),
           updatedAt: Date.now(),
         });
+
+        // Send rejection email for passenger
+        const emailResult = await sendPassengerRejectionEmail(
+          user,
+          comments.trim()
+        );
+        if (!emailResult.success) {
+          console.error("Failed to send rejection email:", emailResult.error);
+        }
+
+        alert(
+          "Document rejected" + (emailResult.success ? " and email sent" : "")
+        );
       } else {
         // Reject driver document
         await updateDoc(doc(db, "users", userId), {
@@ -142,9 +171,10 @@ function DocumentDetailsScreen({
             comments.trim(),
           updatedAt: Date.now(),
         });
+
+        alert("Document rejected");
       }
 
-      alert("Document rejected");
       onNavigateBack();
     } catch (err) {
       console.error("Error rejecting document:", err);

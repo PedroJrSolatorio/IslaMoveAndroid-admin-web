@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import {
+  sendDriverApprovalEmail,
+  sendDriverRejectionEmail,
+} from "../services/BrevoEmailService";
+import {
   ArrowLeft,
   CheckCircle,
   XCircle,
@@ -80,8 +84,17 @@ function DriverDetailsScreen({
         updatedAt: Date.now(),
       });
 
+      // Send approval email
+      const emailResult = await sendDriverApprovalEmail(driver);
+      if (!emailResult.success) {
+        console.error("Failed to send approval email:", emailResult.error);
+      }
+
       await loadDriverDetails();
-      alert("Driver approved successfully");
+      alert(
+        "Driver approved successfully" +
+          (emailResult.success ? " and email sent" : "")
+      );
     } catch (err) {
       console.error("Error approving driver:", err);
       alert("Failed to approve driver");
@@ -103,8 +116,17 @@ function DriverDetailsScreen({
         updatedAt: Date.now(),
       });
 
+      // Send rejection email
+      const emailResult = await sendDriverRejectionEmail(driver, reason);
+      if (!emailResult.success) {
+        console.error("Failed to send rejection email:", emailResult.error);
+      }
+
       await loadDriverDetails();
-      alert("Driver application rejected");
+      alert(
+        "Driver application rejected" +
+          (emailResult.success ? " and email sent" : "")
+      );
     } catch (err) {
       console.error("Error rejecting driver:", err);
       alert("Failed to reject driver");
