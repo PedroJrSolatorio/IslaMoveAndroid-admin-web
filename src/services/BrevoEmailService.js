@@ -24,7 +24,7 @@ export const sendEmail = async (emailData) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sender: {
-            name: "Islamove Admin",
+            name: "IslaMove Admin",
             email: "noreply@islamove.com", // Change to your verified sender email
           },
           to: [
@@ -83,24 +83,24 @@ export const sendDriverApprovalEmail = async (driver) => {
         <div class="content">
           <h2>Your Driver Application Has Been Approved!</h2>
           <p>Dear ${driver.displayName},</p>
-          <p>Great news! Your driver application for <strong>Islamove</strong> has been approved. You can now start accepting ride requests and earning money.</p>
+          <p>Great news! Your driver application for <strong>IslaMove</strong> has been approved. You can now start accepting ride requests and earning money.</p>
           
           <h3>What's Next?</h3>
           <ul>
-            <li>Open the Islamove Driver app</li>
+            <li>Open the IslaMove Driver app</li>
             <li>Go online to start receiving ride requests</li>
             <li>Provide excellent service to passengers</li>
           </ul>
           
           <p>If you have any questions, please don't hesitate to contact our support team.</p>
           
-          <p>Welcome to the Islamove family!</p>
+          <p>Welcome to the IslaMove family!</p>
           
-          <p><strong>Best regards,</strong><br>Islamove Team</p>
+          <p><strong>Best regards,</strong><br>IslaMove Team</p>
         </div>
         <div class="footer">
           <p>This is an automated message. Please do not reply to this email.</p>
-          <p>&copy; 2024 Islamove. All rights reserved.</p>
+          <p>&copy; 2024 IslaMove. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -110,7 +110,7 @@ export const sendDriverApprovalEmail = async (driver) => {
   return await sendEmail({
     to: driver.email,
     toName: driver.displayName,
-    subject: "🎉 Your Islamove Driver Application is Approved!",
+    subject: "🎉 Your IslaMove Driver Application is Approved!",
     htmlContent: htmlContent,
   });
 };
@@ -146,13 +146,13 @@ export const sendPassengerApprovalEmail = async (passenger) => {
         <div class="content">
           <h2>Your Student ID Has Been Verified</h2>
           <p>Dear ${passenger.displayName},</p>
-          <p>Great news! Your student ID has been successfully verified for <strong>Islamove</strong>.</p>
+          <p>Great news! Your student ID has been successfully verified for <strong>IslaMove</strong>.</p>
           
           ${discountText}
           
           <h3>What's Next?</h3>
           <ul>
-            <li>Open the Islamove app</li>
+            <li>Open the IslaMove app</li>
             <li>Book rides with confidence</li>
             <li>Enjoy your verified student status${
               passenger.discountPercentage ? " and discount" : ""
@@ -161,11 +161,11 @@ export const sendPassengerApprovalEmail = async (passenger) => {
           
           <p>Thank you for verifying your identity. This helps us maintain a safe community for everyone.</p>
           
-          <p><strong>Best regards,</strong><br>Islamove Team</p>
+          <p><strong>Best regards,</strong><br>IslaMove Team</p>
         </div>
         <div class="footer">
           <p>This is an automated message. Please do not reply to this email.</p>
-          <p>&copy; 2024 Islamove. All rights reserved.</p>
+          <p>&copy; 2024 IslaMove. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -175,7 +175,7 @@ export const sendPassengerApprovalEmail = async (passenger) => {
   return await sendEmail({
     to: passenger.email,
     toName: passenger.displayName,
-    subject: "✅ Your Islamove Student ID is Verified!",
+    subject: "✅ Your IslaMove Student ID is Verified!",
     htmlContent: htmlContent,
   });
 };
@@ -205,7 +205,7 @@ export const sendDriverRejectionEmail = async (driver, reason) => {
         <div class="content">
           <h2>Driver Application Status</h2>
           <p>Dear ${driver.displayName},</p>
-          <p>Thank you for your interest in becoming an Islamove driver. Unfortunately, we are unable to approve your application at this time.</p>
+          <p>Thank you for your interest in becoming an IslaMove driver. Unfortunately, we are unable to approve your application at this time.</p>
           
           <div class="reason-box">
             <strong>Reason:</strong><br>
@@ -222,11 +222,11 @@ export const sendDriverRejectionEmail = async (driver, reason) => {
           
           <p>We appreciate your understanding and hope to see your application again soon.</p>
           
-          <p><strong>Best regards,</strong><br>Islamove Team</p>
+          <p><strong>Best regards,</strong><br>IslaMove Team</p>
         </div>
         <div class="footer">
           <p>This is an automated message. Please do not reply to this email.</p>
-          <p>&copy; 2024 Islamove. All rights reserved.</p>
+          <p>&copy; 2024 IslaMove. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -236,7 +236,7 @@ export const sendDriverRejectionEmail = async (driver, reason) => {
   return await sendEmail({
     to: driver.email,
     toName: driver.displayName,
-    subject: "Islamove Driver Application Update",
+    subject: "IslaMove Driver Application Update",
     htmlContent: htmlContent,
   });
 };
@@ -281,13 +281,13 @@ export const sendPassengerRejectionEmail = async (passenger, reason) => {
             <li>Contact support if you have questions</li>
           </ul>
           
-          <p>You can still use Islamove without verification, but some features may be limited.</p>
+          <p>You can still use IslaMove without verification, but some features may be limited.</p>
           
-          <p><strong>Best regards,</strong><br>Islamove Team</p>
+          <p><strong>Best regards,</strong><br>IslaMove Team</p>
         </div>
         <div class="footer">
           <p>This is an automated message. Please do not reply to this email.</p>
-          <p>&copy; 2024 Islamove. All rights reserved.</p>
+          <p>&copy; 2024 IslaMove. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -297,7 +297,7 @@ export const sendPassengerRejectionEmail = async (passenger, reason) => {
   return await sendEmail({
     to: passenger.email,
     toName: passenger.displayName,
-    subject: "Islamove Student ID Verification Update",
+    subject: "IslaMove Student ID Verification Update",
     htmlContent: htmlContent,
   });
 };
