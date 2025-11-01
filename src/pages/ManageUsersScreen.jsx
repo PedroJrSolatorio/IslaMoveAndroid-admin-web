@@ -1,34 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { onSnapshot, collection, doc, updateDoc } from 'firebase/firestore';
-import { User, Ban } from 'lucide-react';
-import { db } from '../config/firebase';
-import { getUserTypeColor, formatStatus, getStatusColor } from '../utils/helpers';
+import React, { useState, useEffect } from "react";
+import { onSnapshot, collection, doc, updateDoc } from "firebase/firestore";
+import { User, Ban } from "lucide-react";
+import { db } from "../config/firebase";
+import {
+  getUserTypeColor,
+  formatStatus,
+  getStatusColor,
+} from "../utils/helpers";
 
 export default function ManageUsersScreen() {
   const [users, setUsers] = useState([]);
-  const [filter, setFilter] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+      const userList = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setUsers(userList);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const filteredUsers = users.filter(user => {
-    const matchesFilter = filter === 'ALL' || user.userType === filter;
-    const matchesSearch = user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          user.phoneNumber?.includes(searchTerm);
+  const filteredUsers = users.filter((user) => {
+    const matchesFilter = filter === "ALL" || user.userType === filter;
+    const matchesSearch =
+      user.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.phoneNumber?.includes(searchTerm);
     return matchesFilter && matchesSearch;
   });
 
   const toggleUserStatus = async (userId, currentStatus) => {
-    await updateDoc(doc(db, 'users', userId), {
+    await updateDoc(doc(db, "users", userId), {
       isActive: !currentStatus,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     });
   };
 
@@ -62,11 +70,21 @@ export default function ManageUsersScreen() {
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">User</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Phone</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">
+                  User
+                </th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">
+                  Type
+                </th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">
+                  Status
+                </th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">
+                  Phone
+                </th>
+                <th className="text-right py-3 px-4 font-medium text-gray-700">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -78,28 +96,40 @@ export default function ManageUsersScreen() {
                         <User className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{user.displayName}</p>
+                        <p className="font-medium text-gray-900">
+                          {user.displayName}
+                        </p>
                         <p className="text-sm text-gray-500">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getUserTypeColor(user.userType)}`}>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getUserTypeColor(
+                        user.userType
+                      )}`}
+                    >
                       {formatStatus(user.userType)}
                     </span>
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(user.isActive ? 'ACTIVE' : 'INACTIVE')}`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                        user.isActive ? "ACTIVE" : "INACTIVE"
+                      )}`}
+                    >
+                      {user.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-gray-600">{user.phoneNumber}</td>
+                  <td className="py-3 px-4 text-gray-600">
+                    {user.phoneNumber}
+                  </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-end space-x-2">
                       <button
                         onClick={() => toggleUserStatus(user.id, user.isActive)}
                         className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
-                        title={user.isActive ? 'Ban User' : 'Activate User'}
+                        title={user.isActive ? "Ban User" : "Activate User"}
                       >
                         <Ban className="w-4 h-4" />
                       </button>
