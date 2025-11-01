@@ -89,7 +89,7 @@ export default function AdminDashboard() {
       documentType,
       documentTitle,
       userType,
-      isStudentVerification: false,
+      isStudentVerification: userType === "passenger",
     });
     setCurrentScreen("document");
   };
