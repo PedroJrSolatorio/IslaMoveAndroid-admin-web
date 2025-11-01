@@ -144,9 +144,9 @@ export const sendPassengerApprovalEmail = async (passenger) => {
           <h1>✅ ID Verification Successful!</h1>
         </div>
         <div class="content">
-          <h2>Your Student ID Has Been Verified</h2>
+          <h2>Your Valid ID Has Been Verified</h2>
           <p>Dear ${passenger.displayName},</p>
-          <p>Great news! Your student ID has been successfully verified for <strong>IslaMove</strong>.</p>
+          <p>Great news! Your valid ID has been successfully verified for <strong>IslaMove</strong>.</p>
           
           ${discountText}
           
@@ -154,9 +154,7 @@ export const sendPassengerApprovalEmail = async (passenger) => {
           <ul>
             <li>Open the IslaMove app</li>
             <li>Book rides with confidence</li>
-            <li>Enjoy your verified student status${
-              passenger.discountPercentage ? " and discount" : ""
-            }</li>
+            <li>Enjoy automatic discounts if student or senior</li>
           </ul>
           
           <p>Thank you for verifying your identity. This helps us maintain a safe community for everyone.</p>
@@ -175,7 +173,7 @@ export const sendPassengerApprovalEmail = async (passenger) => {
   return await sendEmail({
     to: passenger.email,
     toName: passenger.displayName,
-    subject: "✅ Your IslaMove Student ID is Verified!",
+    subject: "✅ Your IslaMove Valid ID is Verified!",
     htmlContent: htmlContent,
   });
 };
@@ -264,9 +262,9 @@ export const sendPassengerRejectionEmail = async (passenger, reason) => {
           <h1>ID Verification Update</h1>
         </div>
         <div class="content">
-          <h2>Student ID Verification Status</h2>
+          <h2>Valid ID Verification Status</h2>
           <p>Dear ${passenger.displayName},</p>
-          <p>Thank you for submitting your student ID for verification. Unfortunately, we are unable to verify your ID at this time.</p>
+          <p>Thank you for submitting your valid ID for verification. Unfortunately, we are unable to verify your ID at this time.</p>
           
           <div class="reason-box">
             <strong>Reason:</strong><br>
@@ -276,7 +274,7 @@ export const sendPassengerRejectionEmail = async (passenger, reason) => {
           <h3>What Can You Do?</h3>
           <ul>
             <li>Review the reason for rejection</li>
-            <li>Upload a clear, valid student ID</li>
+            <li>Upload a clear, valid ID</li>
             <li>Ensure all information is visible and readable</li>
             <li>Contact support if you have questions</li>
           </ul>
@@ -297,7 +295,7 @@ export const sendPassengerRejectionEmail = async (passenger, reason) => {
   return await sendEmail({
     to: passenger.email,
     toName: passenger.displayName,
-    subject: "IslaMove Student ID Verification Update",
+    subject: "IslaMove Valid ID Verification Update",
     htmlContent: htmlContent,
   });
 };
