@@ -1,102 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from "react";
+import { ZoneBoundaryRepository } from "../repositories/ZoneBoundaryRepository";
+import DestinationsTab from "../tabs/DestinationsTab";
+import ZoneBoundariesTab from "../tabs/ZoneBoundariesTab";
+import ServiceBoundaryTab from "../tabs/ServiceBoundaryTab";
+import CompatibilityTab from "../tabs/CompatibilityTab";
+import { useServiceAreaViewModel } from "../hooks/useServiceAreaViewModel";
 
 export default function SystemConfigScreen() {
-  const [config, setConfig] = useState({
-    baseFare: 40,
-    perKmRate: 10,
-    perMinuteRate: 2,
-    bookingRadius: 5,
-    maxCancellations: 3
-  });
+  const [activeTab, setActiveTab] = useState("destinations");
+  const [zoneBoundaries, setZoneBoundaries] = useState([]);
+  const repository = useRef(new ZoneBoundaryRepository()).current;
+  const viewModel = useServiceAreaViewModel();
 
-  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    loadBoundaries();
+  }, []);
 
-  const handleSave = async () => {
-    // In a real application, you would send this config object to a 
-    // Firestore document (e.g., doc(db, 'system', 'config')) or a backend API.
-    console.log('Saving config to Firestore/Backend:', config); 
-    
-    // Placeholder for save action
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const loadBoundaries = async () => {
+    const bounds = await repository.getAllZoneBoundaries();
+    setZoneBoundaries(bounds);
   };
 
+  const tabs = [
+    { id: "destinations", label: "Destinations", icon: "📍" },
+    { id: "boundaries", label: "Zone Boundaries", icon: "🗺️" },
+    { id: "service", label: "Service Boundary", icon: "🌐" },
+    { id: "compatibility", label: "Compatibility", icon: "🔗" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">System Configuration</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Fare Settings</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Base Fare (₱)</label>
-              <input
-                type="number"
-                value={config.baseFare}
-                onChange={(e) => setConfig({...config, baseFare: parseFloat(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Per Kilometer Rate (₱)</label>
-              <input
-                type="number"
-                value={config.perKmRate}
-                onChange={(e) => setConfig({...config, perKmRate: parseFloat(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Per Minute Rate (₱)</label>
-              <input
-                type="number"
-                value={config.perMinuteRate}
-                onChange={(e) => setConfig({...config, perMinuteRate: parseFloat(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+    <div className="h-screen flex flex-col bg-gray-50">
+      <div className="bg-white shadow-sm border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Map Management</h1>
+            <p className="text-sm text-gray-600">
+              Manage destinations and zone boundaries
+            </p>
           </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900">Operational Settings</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Booking Radius (km)</label>
-              <input
-                type="number"
-                value={config.bookingRadius}
-                onChange={(e) => setConfig({...config, bookingRadius: parseFloat(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Cancellations Per Day</label>
-              <input
-                type="number"
-                value={config.maxCancellations}
-                onChange={(e) => setConfig({...config, maxCancellations: parseInt(e.target.value)})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-end space-x-4">
-          {saved && (
-            <span className="text-green-600 font-medium">Settings saved successfully!</span>
-          )}
           <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            onClick={() => {
+              loadBoundaries();
+              window.location.reload();
+            }}
+            className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
-            Save Settings
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
           </button>
         </div>
+      </div>
+
+      <div className="bg-white border-b">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "destinations" && (
+          <DestinationsTab zoneBoundaries={zoneBoundaries} />
+        )}
+        {activeTab === "boundaries" && <ZoneBoundariesTab />}
+        {activeTab === "service" && (
+          <ServiceBoundaryTab
+            viewModel={viewModel}
+            uiState={viewModel.uiState}
+          />
+        )}
+        {activeTab === "compatibility" && <CompatibilityTab />}
       </div>
     </div>
   );
