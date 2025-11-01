@@ -163,7 +163,7 @@ export const sendPassengerApprovalEmail = async (passenger) => {
         </div>
         <div class="footer">
           <p>This is an automated message. Please do not reply to this email.</p>
-          <p>&copy; 2024 IslaMove. All rights reserved.</p>
+          <p>&copy; 2025 IslaMove. All rights reserved.</p>
         </div>
       </div>
     </body>
