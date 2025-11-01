@@ -19,6 +19,9 @@ import ManageUsersScreen from "./pages/ManageUsersScreen";
 import LiveMonitoringScreen from "./pages/LiveMonitoringScreen";
 import SystemConfigScreen from "./pages/SystemConfigScreen";
 import AnalyticsScreen from "./pages/AnalyticsScreen";
+import UserDetailScreen from "./pages/UserDetailScreen";
+import DocumentDetailsScreen2 from "./pages/DocumentDetailsScreen2";
+import TripHistoryScreen from "./pages/TripHistoryScreen";
 
 // ==================== MAIN APP ====================
 export default function AdminDashboard() {
@@ -27,6 +30,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState("home");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
   // Navigation state for detail screens
   const [navigationState, setNavigationState] = useState({
@@ -153,7 +157,54 @@ export default function AdminDashboard() {
         );
 
       case "users":
-        return <ManageUsersScreen />;
+        return (
+          <ManageUsersScreen
+            onNavigateToUserDetail={(userId) => {
+              setSelectedUserId(userId);
+              setCurrentScreen("userDetail");
+            }}
+          />
+        );
+
+      case "userDetail":
+        return (
+          <UserDetailScreen
+            userId={selectedUserId}
+            onNavigateBack={() => setCurrentScreen("users")}
+            onNavigateToTripHistory={(userId) => {
+              setSelectedUserId(userId);
+              setCurrentScreen("tripHistory");
+            }}
+            onNavigateToDocumentDetails={(userId, docType, docTitle) => {
+              setNavigationState({
+                userId,
+                documentType: docType,
+                documentTitle: docTitle,
+                userType: null,
+              });
+              setCurrentScreen("documentDetails2");
+            }}
+          />
+        );
+
+      case "tripHistory":
+        return (
+          <TripHistoryScreen
+            userId={selectedUserId}
+            onNavigateBack={() => setCurrentScreen("userDetail")}
+          />
+        );
+
+      case "documentDetails2":
+        return (
+          <DocumentDetailsScreen2
+            userId={navigationState.userId}
+            documentType={navigationState.documentType}
+            documentTitle={navigationState.documentTitle}
+            userType={navigationState.userType}
+            onNavigateBack={() => setCurrentScreen("userDetail")}
+          />
+        );
 
       case "monitoring":
         return <LiveMonitoringScreen />;

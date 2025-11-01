@@ -23,6 +23,7 @@ function VerificationScreen({ onNavigateToDetails }) {
   const [drivers, setDrivers] = useState([]);
   const [passengers, setPassengers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState("ALL");
 
   useEffect(() => {
     setLoading(true);
@@ -123,6 +124,13 @@ function VerificationScreen({ onNavigateToDetails }) {
     matchesSearch(p, searchQuery)
   );
 
+  const displayedDrivers =
+    filterType === "ALL" || filterType === "DRIVER" ? filteredDrivers : [];
+  const displayedPassengers =
+    filterType === "ALL" || filterType === "PASSENGER"
+      ? filteredPassengers
+      : [];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -155,6 +163,40 @@ function VerificationScreen({ onNavigateToDetails }) {
         </div>
       </div>
 
+      {/* Filter toggle buttons */}
+      <div className="flex space-x-2 mt-4">
+        <button
+          onClick={() => setFilterType("ALL")}
+          className={`px-3 py-1 rounded-full border ${
+            filterType === "ALL"
+              ? "bg-blue-600 text-white"
+              : "bg-white text-gray-700"
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setFilterType("DRIVER")}
+          className={`px-3 py-1 rounded-full border ${
+            filterType === "DRIVER"
+              ? "bg-blue-600 text-white"
+              : "bg-white text-gray-700"
+          }`}
+        >
+          Drivers
+        </button>
+        <button
+          onClick={() => setFilterType("PASSENGER")}
+          className={`px-3 py-1 rounded-full border ${
+            filterType === "PASSENGER"
+              ? "bg-blue-600 text-white"
+              : "bg-white text-gray-700"
+          }`}
+        >
+          Passengers
+        </button>
+      </div>
+
       {/* Empty State */}
       {filteredDrivers.length === 0 && filteredPassengers.length === 0 && (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
@@ -170,13 +212,13 @@ function VerificationScreen({ onNavigateToDetails }) {
       )}
 
       {/* Driver Applications Section */}
-      {filteredDrivers.length > 0 && (
+      {displayedDrivers.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Driver Applications ({filteredDrivers.length})
+            Driver Applications ({displayedDrivers.length})
           </h2>
           <div className="space-y-3">
-            {filteredDrivers.map((driver) => (
+            {displayedDrivers.map((driver) => (
               <DriverApplicationCard
                 key={driver.id}
                 driver={driver}
@@ -188,13 +230,13 @@ function VerificationScreen({ onNavigateToDetails }) {
       )}
 
       {/* Passenger ID Verification Section */}
-      {filteredPassengers.length > 0 && (
+      {displayedPassengers.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Passenger ID Verification ({filteredPassengers.length})
+            Passenger ID Verification ({displayedPassengers.length})
           </h2>
           <div className="space-y-3">
-            {filteredPassengers.map((passenger) => (
+            {displayedPassengers.map((passenger) => (
               <PassengerDocumentCard
                 key={passenger.id}
                 passenger={passenger}
@@ -317,30 +359,24 @@ function PassengerDocumentCard({ passenger, onClick }) {
               {passenger.displayName || "Unknown Student"}
             </h3>
             {passenger.studentDocument && (
-              <>
-                <p className="text-sm text-gray-600">
-                  {passenger.studentDocument.school} • ID:{" "}
-                  {passenger.studentDocument.studentIdNumber}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Uploaded: {formatDate(passenger.studentDocument.uploadedAt)}
-                </p>
-              </>
+              <p className="text-xs text-gray-500">
+                Uploaded: {formatDate(passenger.studentDocument.uploadedAt)}
+              </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {/* Status Badge */}
-          <span
+        {/* <div className="flex items-center space-x-3"> */}
+        {/* Status Badge */}
+        {/* <span
             className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.color}`}
           >
             {statusInfo.text}
-          </span>
+          </span> */}
 
-          {/* Arrow Icon */}
-          <ArrowRight className="w-5 h-5 text-gray-400" />
-        </div>
+        {/* Arrow Icon */}
+        <ArrowRight className="w-5 h-5 text-gray-400" />
+        {/* </div> */}
       </div>
     </div>
   );
