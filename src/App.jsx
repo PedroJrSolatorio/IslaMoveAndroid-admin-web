@@ -78,6 +78,12 @@ export default function AdminDashboard() {
     documentTitle,
     userType
   ) => {
+    console.log("=== NAVIGATE TO DOCUMENT ===");
+    console.log("userId:", userId);
+    console.log("documentType:", documentType);
+    console.log("documentTitle:", documentTitle);
+    console.log("userType:", userType);
+
     setNavigationState({
       userId,
       documentType,
@@ -89,6 +95,10 @@ export default function AdminDashboard() {
   };
 
   const handleNavigateBack = () => {
+    console.log("=== NAVIGATE BACK ===");
+    console.log("Current screen:", currentScreen);
+    console.log("Current navigationState:", navigationState);
+
     if (currentScreen === "document") {
       // From document back to details
       setCurrentScreen("details");
@@ -120,6 +130,8 @@ export default function AdminDashboard() {
         );
 
       case "details":
+        console.log("=== RENDERING DETAILS ===");
+        console.log("navigationState:", navigationState);
         return (
           <DriverDetailsScreen
             driverId={navigationState.userId}
