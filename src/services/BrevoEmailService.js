@@ -1,6 +1,3 @@
-const BREVO_API_KEY = process.env.REACT_APP_BREVO_API_KEY;
-const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
-
 /**
  * Send email using Brevo API
  * @param {Object} emailData - Email configuration
@@ -20,28 +17,27 @@ export const sendEmail = async (emailData) => {
   }
 
   try {
-    const response = await fetch(BREVO_API_URL, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "api-key": BREVO_API_KEY,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: {
-          name: "Islamove Admin",
-          email: "noreply@islamove.com", // Change to your verified sender email
-        },
-        to: [
-          {
-            email: emailData.to,
-            name: emailData.toName,
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/send-email`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: {
+            name: "Islamove Admin",
+            email: "noreply@islamove.com", // Change to your verified sender email
           },
-        ],
-        subject: emailData.subject,
-        htmlContent: emailData.htmlContent,
-      }),
-    });
+          to: [
+            {
+              email: emailData.to,
+              name: emailData.toName,
+            },
+          ],
+          subject: emailData.subject,
+          htmlContent: emailData.htmlContent,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
