@@ -67,27 +67,19 @@ function DriverDetailsScreen({
   };
 
   const approveDriver = async () => {
-    // Add confirmation dialog before approving
-    const confirmed = window.confirm(
-      "Are you sure you want to approve this driver application? This will send an approval email to the driver."
-    );
-
-    if (!confirmed) return;
-
     setProcessing(true);
     try {
       // Check if all documents are approved
       const allDocsApproved = checkAllDocumentsApproved();
 
       if (!allDocsApproved) {
-        window.alert(
-          "All documents must be approved and vehicle information must be complete before approving the driver application"
+        alert(
+          "All documents must be approved before approving the driver application"
         );
         setProcessing(false);
         return;
       }
 
-      // Update driver status in Firestore
       await updateDoc(doc(db, "users", driverId), {
         "driverData.verificationStatus": VerificationStatus.APPROVED,
         "driverData.verificationDate": Date.now(),
@@ -95,52 +87,31 @@ function DriverDetailsScreen({
         updatedAt: Date.now(),
       });
 
-      console.log("Driver status updated in Firestore");
-
       // Send approval email
-      console.log("Sending approval email to:", driver.email);
       const emailResult = await sendDriverApprovalEmail(driver);
-
       if (!emailResult.success) {
         console.error("Failed to send approval email:", emailResult.error);
-        window.alert(
-          "Driver approved successfully, but failed to send email notification. Error: " +
-            (emailResult.error || "Unknown error")
-        );
-      } else {
-        console.log("Approval email sent successfully");
-        window.alert(
-          "✅ Driver approved successfully and approval email has been sent!"
-        );
       }
 
-      // Reload driver details
       await loadDriverDetails();
+      alert(
+        "Driver approved successfully" +
+          (emailResult.success ? " and email sent" : "")
+      );
     } catch (err) {
       console.error("Error approving driver:", err);
-      window.alert("Failed to approve driver: " + err.message);
+      alert("Failed to approve driver");
     } finally {
       setProcessing(false);
     }
   };
 
   const rejectDriver = async () => {
-    const reason = window.prompt("Enter rejection reason:");
-    if (!reason || reason.trim() === "") {
-      window.alert("Rejection reason is required");
-      return;
-    }
-
-    // Add confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to reject this driver application?\n\nReason: ${reason}\n\nThis will send a rejection email to the driver.`
-    );
-
-    if (!confirmed) return;
+    const reason = prompt("Enter rejection reason:");
+    if (!reason || reason.trim() === "") return;
 
     setProcessing(true);
     try {
-      // Update driver status in Firestore
       await updateDoc(doc(db, "users", driverId), {
         "driverData.verificationStatus": VerificationStatus.REJECTED,
         "driverData.verificationDate": Date.now(),
@@ -148,30 +119,20 @@ function DriverDetailsScreen({
         updatedAt: Date.now(),
       });
 
-      console.log("Driver status updated to REJECTED in Firestore");
-
       // Send rejection email
-      console.log("Sending rejection email to:", driver.email);
       const emailResult = await sendDriverRejectionEmail(driver, reason);
-
       if (!emailResult.success) {
         console.error("Failed to send rejection email:", emailResult.error);
-        window.alert(
-          "Driver application rejected, but failed to send email notification. Error: " +
-            (emailResult.error || "Unknown error")
-        );
-      } else {
-        console.log("Rejection email sent successfully");
-        window.alert(
-          "✅ Driver application rejected and rejection email has been sent."
-        );
       }
 
-      // Reload driver details
       await loadDriverDetails();
+      alert(
+        "Driver application rejected" +
+          (emailResult.success ? " and email sent" : "")
+      );
     } catch (err) {
       console.error("Error rejecting driver:", err);
-      window.alert("Failed to reject driver: " + err.message);
+      alert("Failed to reject driver");
     } finally {
       setProcessing(false);
     }
