@@ -126,7 +126,7 @@ export default function AdminDashboard() {
   const renderScreen = () => {
     switch (currentScreen) {
       case "home":
-        return <HomeScreen />;
+        return <HomeScreen onNavigate={setCurrentScreen} />;
 
       case "verification":
         return (
@@ -203,6 +203,16 @@ export default function AdminDashboard() {
             documentTitle={navigationState.documentTitle}
             userType={navigationState.userType}
             onNavigateBack={() => setCurrentScreen("userDetail")}
+          />
+        );
+
+      case "reports":
+        return (
+          <ManageUsersScreen
+            onNavigateToUserDetail={(userId) => {
+              setSelectedUserId(userId);
+              setCurrentScreen("userDetail");
+            }}
           />
         );
 

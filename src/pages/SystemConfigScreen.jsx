@@ -7,7 +7,8 @@ import CompatibilityTab from "../tabs/CompatibilityTab";
 import { useServiceAreaViewModel } from "../hooks/useServiceAreaViewModel";
 
 export default function SystemConfigScreen() {
-  const [activeTab, setActiveTab] = useState("destinations");
+  // const [activeTab, setActiveTab] = useState("destinations");
+  const [activeTab, setActiveTab] = useState("boundaries");
   const [zoneBoundaries, setZoneBoundaries] = useState([]);
   const repository = useRef(new ZoneBoundaryRepository()).current;
   const viewModel = useServiceAreaViewModel();
@@ -22,10 +23,10 @@ export default function SystemConfigScreen() {
   };
 
   const tabs = [
-    { id: "destinations", label: "Destinations", icon: "📍" },
+    // { id: "destinations", label: "Destinations", icon: "📍" },
     { id: "boundaries", label: "Zone Boundaries", icon: "🗺️" },
     { id: "service", label: "Service Boundary", icon: "🌐" },
-    { id: "compatibility", label: "Compatibility", icon: "🔗" },
+    // { id: "compatibility", label: "Compatibility", icon: "🔗" },
   ];
 
   return (
@@ -82,9 +83,9 @@ export default function SystemConfigScreen() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === "destinations" && (
+        {/* {activeTab === "destinations" && (
           <DestinationsTab zoneBoundaries={zoneBoundaries} />
-        )}
+        )} */}
         {activeTab === "boundaries" && <ZoneBoundariesTab />}
         {activeTab === "service" && (
           <ServiceBoundaryTab
@@ -92,7 +93,7 @@ export default function SystemConfigScreen() {
             uiState={viewModel.uiState}
           />
         )}
-        {activeTab === "compatibility" && <CompatibilityTab />}
+        {/* {activeTab === "compatibility" && <CompatibilityTab />} */}
       </div>
     </div>
   );

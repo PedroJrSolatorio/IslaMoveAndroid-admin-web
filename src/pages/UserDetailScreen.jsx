@@ -8,6 +8,9 @@ import {
   where,
   getDocs,
   onSnapshot,
+  limit,
+  orderBy,
+  writeBatch,
 } from "firebase/firestore";
 import {
   ArrowLeft,
@@ -71,7 +74,93 @@ export default function UserDetailScreen({
     VerificationStatus.PENDING
   );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showTicketStatusDialog, setShowTicketStatusDialog] = useState(false);
+  const [selectedTicketForUpdate, setSelectedTicketForUpdate] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [userTickets, setUserTickets] = useState([]);
+  const [ticketsLimit] = useState(20);
+  const [hasMoreTickets, setHasMoreTickets] = useState(false);
+  const [lastTicketDoc, setLastTicketDoc] = useState(null);
+  const [loadingMoreTickets, setLoadingMoreTickets] = useState(false);
+
+  // Load only recent tickets (e.g., last 20)
+  const ticketsQuery = query(
+    collection(db, "supportTickets"),
+    where("userId", "==", userId),
+    orderBy("timestamp", "desc"),
+    limit(20) // Only load 20 most recent
+  );
+
+  const updateMultipleFields = async (updates) => {
+    try {
+      const batch = writeBatch(db);
+      const userRef = doc(db, "users", userId);
+
+      batch.update(userRef, {
+        ...updates,
+        updatedAt: Date.now(),
+      });
+
+      await batch.commit();
+      setActionMessage("Updates saved successfully");
+    } catch (error) {
+      console.error("Error updating:", error);
+      setErrorMessage("Failed to save updates");
+    }
+  };
+
+  const blockUserAndRemoveDiscount = async () => {
+    try {
+      const updates = {
+        isActive: false,
+        discountPercentage: null,
+      };
+
+      await updateMultipleFields(updates);
+      setIsActive(false);
+      setSelectedDiscount(null);
+      setActionMessage("User blocked and discount removed");
+    } catch (error) {
+      console.error("Error blocking user:", error);
+      setErrorMessage("Failed to block user");
+    }
+  };
+
+  const loadMoreTickets = async () => {
+    if (!lastTicketDoc || loadingMoreTickets) return;
+
+    try {
+      setLoadingMoreTickets(true);
+
+      const nextTicketsQuery = query(
+        collection(db, "supportTickets"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc"),
+        startAfter(lastTicketDoc),
+        limit(ticketsLimit)
+      );
+
+      const snapshot = await getDocs(nextTicketsQuery);
+      const newTickets = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ticketId: doc.id,
+        type: "ticket",
+        ...doc.data(),
+      }));
+
+      setUserTickets((prev) => [...prev, ...newTickets]);
+      setHasMoreTickets(snapshot.docs.length === ticketsLimit);
+
+      if (snapshot.docs.length > 0) {
+        setLastTicketDoc(snapshot.docs[snapshot.docs.length - 1]);
+      }
+    } catch (error) {
+      console.error("Error loading more tickets:", error);
+      setErrorMessage("Failed to load more tickets");
+    } finally {
+      setLoadingMoreTickets(false);
+    }
+  };
 
   // Real-time listener for user data
   useEffect(() => {
@@ -104,76 +193,95 @@ export default function UserDetailScreen({
     return () => unsubscribe();
   }, [userId]);
 
-  // Load user comments
+  // Load support tickets with pagination
   useEffect(() => {
     if (!userId) return;
 
-    const loadComments = async () => {
-      try {
-        const commentsQuery = query(
-          collection(db, "support_comments"),
-          where("userId", "==", userId)
-        );
-        const snapshot = await getDocs(commentsQuery);
-        const comments = snapshot.docs.map((doc) => ({
+    const ticketsQuery = query(
+      collection(db, "supportTickets"),
+      where("userId", "==", userId),
+      orderBy("timestamp", "desc"),
+      limit(ticketsLimit)
+    );
+
+    const unsubscribe = onSnapshot(
+      ticketsQuery,
+      (snapshot) => {
+        const tickets = snapshot.docs.map((doc) => ({
           id: doc.id,
+          ticketId: doc.id,
+          type: "ticket",
           ...doc.data(),
         }));
-        setUserComments(comments.sort((a, b) => b.timestamp - a.timestamp));
-      } catch (error) {
-        console.error("Error loading comments:", error);
+
+        setUserTickets(tickets);
+
+        // Check if there are more tickets
+        setHasMoreTickets(snapshot.docs.length === ticketsLimit);
+
+        // Store the last document for pagination
+        if (snapshot.docs.length > 0) {
+          setLastTicketDoc(snapshot.docs[snapshot.docs.length - 1]);
+        }
+      },
+      (error) => {
+        console.error("Error loading tickets:", error);
       }
-    };
+    );
 
-    loadComments();
-  }, [userId]);
+    return () => unsubscribe();
+  }, [userId, ticketsLimit]);
 
-  // Load driver reports
+  // Load driver reports with real-time updates
   useEffect(() => {
     if (!user || user.userType !== "DRIVER") return;
 
-    const loadDriverReports = async () => {
-      try {
-        const reportsQuery = query(
-          collection(db, "driver_reports"),
-          where("driverId", "==", userId)
-        );
-        const snapshot = await getDocs(reportsQuery);
+    const reportsQuery = query(
+      collection(db, "driver_reports"),
+      where("driverId", "==", userId)
+    );
+
+    const unsubscribe = onSnapshot(
+      reportsQuery,
+      (snapshot) => {
         const reports = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setDriverReports(reports.sort((a, b) => b.timestamp - a.timestamp));
-      } catch (error) {
+      },
+      (error) => {
         console.error("Error loading driver reports:", error);
       }
-    };
+    );
 
-    loadDriverReports();
+    return () => unsubscribe();
   }, [user, userId]);
 
-  // Load passenger reports
+  // Load passenger reports with real-time updates
   useEffect(() => {
     if (!user || user.userType !== "PASSENGER") return;
 
-    const loadPassengerReports = async () => {
-      try {
-        const reportsQuery = query(
-          collection(db, "passenger_reports"),
-          where("passengerId", "==", userId)
-        );
-        const snapshot = await getDocs(reportsQuery);
+    const reportsQuery = query(
+      collection(db, "passenger_reports"),
+      where("passengerId", "==", userId)
+    );
+
+    const unsubscribe = onSnapshot(
+      reportsQuery,
+      (snapshot) => {
         const reports = snapshot.docs.map((doc) => ({
           reportId: doc.id,
           ...doc.data(),
         }));
         setPassengerReports(reports.sort((a, b) => b.timestamp - a.timestamp));
-      } catch (error) {
+      },
+      (error) => {
         console.error("Error loading passenger reports:", error);
       }
-    };
+    );
 
-    loadPassengerReports();
+    return () => unsubscribe();
   }, [user, userId]);
 
   // Auto-clear messages
@@ -209,21 +317,25 @@ export default function UserDetailScreen({
       const status = verified
         ? DocumentStatus.APPROVED
         : DocumentStatus.REJECTED;
-      await updateDoc(doc(db, "users", userId), {
+
+      const updates = {
         "studentDocument.status": status,
-        updatedAt: Date.now(),
-      });
-      setIsVerified(verified);
+      };
 
       // Reset discount if verification removed
       if (!verified && selectedDiscount) {
-        await updateDiscount(null);
+        updates.discountPercentage = null;
+        setSelectedDiscount(null);
         setActionMessage("Passenger verification removed and discount reset");
       } else {
         setActionMessage(
           verified ? "Passenger verified" : "Passenger verification removed"
         );
       }
+
+      // Use batch update instead of multiple updateDoc calls
+      await updateMultipleFields(updates);
+      setIsVerified(verified);
     } catch (error) {
       console.error("Error updating verification:", error);
       setErrorMessage("Failed to update verification");
@@ -275,22 +387,18 @@ export default function UserDetailScreen({
       const updates = {
         "driverData.verificationStatus": status,
         "driverData.verificationUpdatedAt": Date.now(),
-        updatedAt: Date.now(),
       };
 
       // Reset discount if not approved
       if (status !== VerificationStatus.APPROVED && selectedDiscount) {
         updates.discountPercentage = null;
-      }
-
-      await updateDoc(doc(db, "users", userId), updates);
-
-      if (status !== VerificationStatus.APPROVED && selectedDiscount) {
         setSelectedDiscount(null);
         setActionMessage("Driver verification updated and discount reset");
       } else {
         setActionMessage("Driver verification status updated");
       }
+
+      await updateMultipleFields(updates);
     } catch (error) {
       console.error("Error updating driver verification:", error);
       setErrorMessage("Failed to update driver verification");
@@ -299,49 +407,54 @@ export default function UserDetailScreen({
 
   const updateReportStatus = async (reportId, newStatus) => {
     try {
+      // Just update - the real-time listener will handle the refresh
       await updateDoc(doc(db, "driver_reports", reportId), {
         status: newStatus,
       });
       setActionMessage(`Report status updated to ${newStatus}`);
-
-      // Reload reports
-      const reportsQuery = query(
-        collection(db, "driver_reports"),
-        where("driverId", "==", userId)
-      );
-      const snapshot = await getDocs(reportsQuery);
-      const reports = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setDriverReports(reports.sort((a, b) => b.timestamp - a.timestamp));
+      // No need to reload - onSnapshot handles it automatically
     } catch (error) {
       console.error("Error updating report status:", error);
       setErrorMessage("Failed to update report status");
     }
   };
 
+  const updatePersonalInfoBatch = async (fields) => {
+    try {
+      // fields = { displayName: "John", phoneNumber: "+1234567890", address: "123 Main St" }
+      await updateMultipleFields(fields);
+    } catch (error) {
+      console.error("Error updating personal info:", error);
+      setErrorMessage("Failed to update personal information");
+    }
+  };
+
   const updatePassengerReportStatus = async (reportId, newStatus) => {
     try {
+      // Just update - the real-time listener will handle the refresh
       await updateDoc(doc(db, "passenger_reports", reportId), {
         status: newStatus,
       });
       setActionMessage(`Report status updated to ${newStatus}`);
-
-      // Reload reports
-      const reportsQuery = query(
-        collection(db, "passenger_reports"),
-        where("passengerId", "==", userId)
-      );
-      const snapshot = await getDocs(reportsQuery);
-      const reports = snapshot.docs.map((doc) => ({
-        reportId: doc.id,
-        ...doc.data(),
-      }));
-      setPassengerReports(reports.sort((a, b) => b.timestamp - a.timestamp));
+      // No need to reload - onSnapshot handles it automatically
     } catch (error) {
       console.error("Error updating passenger report status:", error);
       setErrorMessage("Failed to update passenger report status");
+    }
+  };
+
+  const updateTicketStatus = async (ticketId, newStatus) => {
+    try {
+      // Just update - the real-time listener will handle the refresh
+      await updateDoc(doc(db, "supportTickets", ticketId), {
+        status: newStatus,
+        updatedAt: Date.now(),
+      });
+      setActionMessage(`Ticket status updated to ${newStatus}`);
+      // No need to reload - onSnapshot handles it automatically
+    } catch (error) {
+      console.error("Error updating ticket status:", error);
+      setErrorMessage("Failed to update ticket status");
     }
   };
 
@@ -807,25 +920,80 @@ export default function UserDetailScreen({
           </button>
         </div>
 
-        {/* Support Comments */}
+        {/* Support Tickets */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Support Comments
+            Support Tickets
           </h3>
-          {userComments.length > 0 ? (
-            <div className="space-y-3">
-              {userComments.map((comment) => (
-                <div key={comment.id} className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600 mb-2">
-                    {formatDate(comment.timestamp)}
-                  </p>
-                  <p className="text-sm text-gray-900">{comment.message}</p>
-                </div>
-              ))}
-            </div>
+          {userTickets.length > 0 ? (
+            <>
+              <div className="space-y-3">
+                {userTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="p-4 rounded-lg bg-blue-50 border border-blue-200"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <p className="text-xs text-gray-600">
+                            {formatDate(ticket.timestamp)}
+                          </p>
+                          <span
+                            className={`px-2 py-0.5 text-xs font-medium rounded ${
+                              ticket.status === "open"
+                                ? "bg-orange-100 text-orange-700"
+                                : ticket.status === "in_progress"
+                                ? "bg-blue-100 text-blue-700"
+                                : ticket.status === "resolved"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {ticket.status === "open"
+                              ? "Open"
+                              : ticket.status === "in_progress"
+                              ? "In Progress"
+                              : ticket.status === "resolved"
+                              ? "Resolved"
+                              : "Closed"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-900">
+                          {ticket.description}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedTicketForUpdate(ticket);
+                          setShowTicketStatusDialog(true);
+                        }}
+                        className="ml-2 p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Ticket ID: {ticket.ticketId?.substring(0, 8)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {hasMoreTickets && (
+                <button
+                  onClick={loadMoreTickets}
+                  disabled={loadingMoreTickets}
+                  className="w-full mt-4 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMoreTickets ? "Loading..." : "Load More Tickets"}
+                </button>
+              )}
+            </>
           ) : (
             <p className="text-sm text-gray-600">
-              No support comments submitted
+              No support tickets submitted
             </p>
           )}
         </div>
@@ -1282,6 +1450,81 @@ export default function UserDetailScreen({
                 }`}
               >
                 Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Status Update Dialog */}
+      {showTicketStatusDialog && selectedTicketForUpdate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4">Update Ticket Status</h3>
+            <p className="text-sm text-gray-600 mb-2">
+              Ticket ID: {selectedTicketForUpdate.ticketId?.substring(0, 8)}
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Current Status:{" "}
+              <span className="font-medium capitalize">
+                {selectedTicketForUpdate.status?.replace("_", " ")}
+              </span>
+            </p>
+
+            <div className="space-y-2 mb-6">
+              <p className="text-sm text-gray-700 font-medium">
+                Select new status:
+              </p>
+              {[
+                { value: "open", label: "Open" },
+                { value: "in_progress", label: "In Progress" },
+                { value: "resolved", label: "Resolved" },
+                { value: "closed", label: "Closed" },
+              ].map((status) => (
+                <label
+                  key={status.value}
+                  className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="ticketStatus"
+                    value={status.value}
+                    checked={selectedTicketForUpdate.status === status.value}
+                    onChange={(e) =>
+                      setSelectedTicketForUpdate({
+                        ...selectedTicketForUpdate,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{status.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowTicketStatusDialog(false);
+                  setSelectedTicketForUpdate(null);
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  updateTicketStatus(
+                    selectedTicketForUpdate.ticketId,
+                    selectedTicketForUpdate.status
+                  );
+                  setShowTicketStatusDialog(false);
+                  setSelectedTicketForUpdate(null);
+                }}
+                className="px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Update
               </button>
             </div>
           </div>

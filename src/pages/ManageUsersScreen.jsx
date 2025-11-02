@@ -12,12 +12,7 @@ import { User, Search, Flag, MessageSquare, ChevronDown } from "lucide-react";
 import { db } from "../config/firebase";
 
 // Enums matching Android
-const UserFilter = {
-  ALL: "ALL",
-  PASSENGER: "PASSENGER",
-  DRIVER: "DRIVER",
-};
-
+const UserFilter = { ALL: "ALL", PASSENGER: "PASSENGER", DRIVER: "DRIVER" };
 const StatusFilter = {
   ALL: "ALL",
   ACTIVE: "ACTIVE",
@@ -37,6 +32,9 @@ const VerificationStatus = {
   UNDER_REVIEW: "UNDER_REVIEW",
 };
 
+// ✅ PAGE SIZE for pagination
+const PAGE_SIZE = 50;
+
 export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   const [users, setUsers] = useState([]);
   const [driverReportCounts, setDriverReportCounts] = useState({});
@@ -50,8 +48,9 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   const [isStatusDropdownExpanded, setIsStatusDropdownExpanded] =
     useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0); // ✅ Pagination state
 
-  // Load users with real-time updates
+  // ✅ Load users with real-time updates (metadata changes disabled)
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "users"),
@@ -62,98 +61,75 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
         }));
         setUsers(userList);
         setIsLoading(false);
-
-        // Load comment counts after users are loaded
-        loadUserCommentCounts(userList);
       },
-      (error) => {
-        console.error("Error loading users:", error);
-        setIsLoading(false);
+      {
+        includeMetadataChanges: false, // ✅ Critical: Ignore metadata changes
       }
     );
 
     return () => unsubscribe();
   }, []);
 
-  // Load driver report counts
+  // ✅ Load ALL counts in bulk ONCE (not per-user)
   useEffect(() => {
-    loadDriverReportCounts();
-  }, []);
+    if (users.length === 0) return;
 
-  // Load passenger report counts
-  useEffect(() => {
-    loadPassengerReportCounts();
-  }, []);
+    loadAllCounts();
+  }, [users.length]); // Only when user count changes
 
-  const loadDriverReportCounts = async () => {
+  const loadAllCounts = async () => {
     try {
-      const reportsQuery = query(
-        collection(db, "driver_reports"),
-        where("status", "in", ["PENDING", "UNDER_REVIEW"])
-      );
+      // ✅ Fetch ALL reports and comments in parallel
+      const [
+        driverReportsSnapshot,
+        passengerReportsSnapshot,
+        allCommentsSnapshot,
+      ] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, "driver_reports"),
+            where("status", "in", ["PENDING", "UNDER_REVIEW"])
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "passenger_reports"),
+            where("status", "in", ["pending", "under_review"])
+          )
+        ),
+        getDocs(collection(db, "support_comments")),
+      ]);
 
-      const snapshot = await getDocs(reportsQuery);
-      const counts = {};
-
-      snapshot.docs.forEach((doc) => {
-        const report = doc.data();
-        const driverId = report.driverId;
-        counts[driverId] = (counts[driverId] || 0) + 1;
+      // ✅ Build count maps
+      const driverCounts = {};
+      driverReportsSnapshot.docs.forEach((doc) => {
+        const driverId = doc.data().driverId;
+        driverCounts[driverId] = (driverCounts[driverId] || 0) + 1;
       });
 
-      setDriverReportCounts(counts);
-      console.log("Loaded driver report counts:", counts);
-    } catch (error) {
-      console.error("Error loading driver report counts:", error);
-      setDriverReportCounts({});
-    }
-  };
-
-  const loadPassengerReportCounts = async () => {
-    try {
-      const reportsQuery = query(
-        collection(db, "passenger_reports"),
-        where("status", "in", ["pending", "under_review"])
-      );
-
-      const snapshot = await getDocs(reportsQuery);
-      const counts = {};
-
-      snapshot.docs.forEach((doc) => {
-        const report = doc.data();
-        const passengerId = report.passengerId;
-        counts[passengerId] = (counts[passengerId] || 0) + 1;
+      const passengerCounts = {};
+      passengerReportsSnapshot.docs.forEach((doc) => {
+        const passengerId = doc.data().passengerId;
+        passengerCounts[passengerId] = (passengerCounts[passengerId] || 0) + 1;
       });
 
-      setPassengerReportCounts(counts);
-      console.log("Loaded passenger report counts:", counts);
+      const commentCounts = {};
+      allCommentsSnapshot.docs.forEach((doc) => {
+        const userId = doc.data().userId;
+        commentCounts[userId] = (commentCounts[userId] || 0) + 1;
+      });
+
+      setDriverReportCounts(driverCounts);
+      setPassengerReportCounts(passengerCounts);
+      setUserCommentCounts(commentCounts);
+
+      console.log("✅ Loaded counts:", {
+        drivers: Object.keys(driverCounts).length,
+        passengers: Object.keys(passengerCounts).length,
+        comments: Object.keys(commentCounts).length,
+      });
     } catch (error) {
-      console.error("Error loading passenger report counts:", error);
-      setPassengerReportCounts({});
-    }
-  };
-
-  const loadUserCommentCounts = async (userList) => {
-    try {
-      const counts = {};
-
-      for (const user of userList) {
-        const commentsQuery = query(
-          collection(db, "support_comments"),
-          where("userId", "==", user.uid)
-        );
-
-        const snapshot = await getDocs(commentsQuery);
-        if (snapshot.size > 0) {
-          counts[user.uid] = snapshot.size;
-        }
-      }
-
-      setUserCommentCounts(counts);
-      console.log("Loaded user comment counts:", counts);
-    } catch (error) {
-      console.error("Error loading user comment counts:", error);
-      setUserCommentCounts({});
+      console.error("Error loading counts:", error);
     }
   };
 
@@ -169,7 +145,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
     }
   };
 
-  // Filter users based on search and filters
+  // ✅ Filter users client-side (no additional Firestore reads)
   const filteredUsers = users
     .filter((user) => {
       // Search filter
@@ -245,6 +221,13 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
     .sort((a, b) =>
       a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase())
     );
+
+  // ✅ Pagination
+  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+  const paginatedUsers = filteredUsers.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE
+  );
 
   const getStatusFilterOptions = () => {
     switch (selectedFilter) {
@@ -337,7 +320,6 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           return { bg: "bg-gray-100", text: "text-gray-700", label: "Pending" };
       }
     } else if (user.userType === "PASSENGER") {
-      // Check for Student Document Status
       const docStatus = user.studentDocument?.status;
       switch (docStatus) {
         case "APPROVED":
@@ -347,11 +329,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             label: "Student Verified",
           };
         case "PENDING":
-          return {
-            bg: "bg-gray-100",
-            text: "text-gray-700",
-            label: "Pending",
-          };
+          return { bg: "bg-gray-100", text: "text-gray-700", label: "Pending" };
         case "PENDING_REVIEW":
           return {
             bg: "bg-blue-100",
@@ -365,10 +343,8 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             label: "Student Rejected",
           };
         default:
-          // Fallback to Active/Blocked status if no document status
-          if (!user.isActive) {
+          if (!user.isActive)
             return { bg: "bg-red-100", text: "text-red-700", label: "Blocked" };
-          }
           return {
             bg: "bg-green-100",
             text: "text-green-700",
@@ -376,10 +352,8 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           };
       }
     } else {
-      // For admins and other user types
-      if (!user.isActive) {
+      if (!user.isActive)
         return { bg: "bg-red-100", text: "text-red-700", label: "Blocked" };
-      }
       return { bg: "bg-green-100", text: "text-green-700", label: "Active" };
     }
   };
@@ -397,6 +371,10 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Manage Users</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Showing {paginatedUsers.length} of {filteredUsers.length} users (Page{" "}
+          {currentPage + 1}/{totalPages || 1})
+        </p>
       </div>
 
       {/* Search Bar */}
@@ -407,7 +385,10 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             type="text"
             placeholder="Search users by name, email..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(0); // Reset to first page
+            }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
@@ -421,6 +402,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             onClick={() => {
               setSelectedFilter(UserFilter.ALL);
               setSelectedStatusFilter(StatusFilter.ALL);
+              setCurrentPage(0);
             }}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.ALL
@@ -434,6 +416,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             onClick={() => {
               setSelectedFilter(UserFilter.PASSENGER);
               setSelectedStatusFilter(StatusFilter.ALL);
+              setCurrentPage(0);
             }}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.PASSENGER
@@ -447,6 +430,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             onClick={() => {
               setSelectedFilter(UserFilter.DRIVER);
               setSelectedStatusFilter(StatusFilter.ALL);
+              setCurrentPage(0);
             }}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.DRIVER
@@ -477,6 +461,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
                     onClick={() => {
                       setSelectedStatusFilter(filter);
                       setIsStatusDropdownExpanded(false);
+                      setCurrentPage(0);
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
                   >
@@ -491,7 +476,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
 
       {/* Users List */}
       <div className="space-y-3">
-        {filteredUsers.map((user) => {
+        {paginatedUsers.map((user) => {
           const statusBadge = getStatusBadge(user);
           const reportCount =
             user.userType === "DRIVER"
@@ -543,18 +528,8 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
 
                 {/* Right: Badges and Status */}
                 <div className="flex items-center space-x-2">
-                  {/* Driver Report Badge */}
-                  {user.userType === "DRIVER" && reportCount > 0 && (
-                    <>
-                      <Flag className="w-4 h-4 text-orange-600" />
-                      <span className="text-xs font-bold text-orange-600">
-                        {reportCount}
-                      </span>
-                    </>
-                  )}
-
-                  {/* Passenger Report Badge */}
-                  {user.userType === "PASSENGER" && reportCount > 0 && (
+                  {/* Report Badge */}
+                  {reportCount > 0 && (
                     <>
                       <Flag className="w-4 h-4 text-orange-600" />
                       <span className="text-xs font-bold text-orange-600">
@@ -591,6 +566,31 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           </div>
         )}
       </div>
+
+      {/* ✅ Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-4 mt-6">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage + 1} of {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
+            }
+            disabled={currentPage >= totalPages - 1}
+            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,17 +23,10 @@ import {
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-// Set your Mapbox token
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-// System Health enum
-const SystemHealth = {
-  GOOD: "GOOD",
-  WARNING: "WARNING",
-  ERROR: "ERROR",
-};
+const SystemHealth = { GOOD: "GOOD", WARNING: "WARNING", ERROR: "ERROR" };
 
-// Booking Status enum
 const BookingStatus = {
   PENDING: "PENDING",
   LOOKING_FOR_DRIVER: "LOOKING_FOR_DRIVER",
@@ -45,6 +38,37 @@ const BookingStatus = {
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   EXPIRED: "EXPIRED",
+};
+
+// ✅ USER CACHE to avoid repeated fetches
+const userCache = new Map();
+const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
+
+// ✅ Helper: Get cached user data
+const getCachedUser = async (userId) => {
+  const cached = userCache.get(userId);
+  const now = Date.now();
+
+  if (cached && now - cached.timestamp < CACHE_EXPIRY) {
+    return cached.data;
+  }
+
+  try {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    const userData = userDoc.exists()
+      ? { id: userDoc.id, ...userDoc.data() }
+      : null;
+
+    userCache.set(userId, {
+      data: userData,
+      timestamp: now,
+    });
+
+    return userData;
+  } catch (error) {
+    console.error(`Error fetching user ${userId}:`, error);
+    return null;
+  }
 };
 
 export default function LiveMonitoringScreen() {
@@ -60,7 +84,6 @@ export default function LiveMonitoringScreen() {
   const map = useRef(null);
   const markersRef = useRef([]);
 
-  // Calculate system health based on metrics
   const calculateSystemHealth = (ridesCount, driversCount) => {
     if (driversCount === 0 && ridesCount > 0) return SystemHealth.ERROR;
     if (driversCount > 0 && ridesCount / driversCount > 0.9)
@@ -68,14 +91,13 @@ export default function LiveMonitoringScreen() {
     return SystemHealth.GOOD;
   };
 
-  // Initialize Mapbox map
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [125.576, 10.02], // San Jose, Dinagat Islands
+      center: [125.576, 10.02],
       zoom: 12,
     });
 
@@ -89,7 +111,7 @@ export default function LiveMonitoringScreen() {
     };
   }, []);
 
-  // Monitor active rides in real-time
+  // ✅ Monitor active rides with CACHED user data
   useEffect(() => {
     setIsLiveMonitoring(true);
     console.log("🔥 Starting REAL-TIME monitoring");
@@ -110,50 +132,46 @@ export default function LiveMonitoringScreen() {
     const unsubscribe = onSnapshot(
       bookingsQuery,
       async (snapshot) => {
-        console.log(
-          `🔥 REAL-TIME: Received ${snapshot.docs.length} bookings from Firebase`
-        );
+        console.log(`🔥 REAL-TIME: Received ${snapshot.docs.length} bookings`);
 
-        const bookingsData = [];
+        // ✅ Collect unique user IDs
+        const userIds = new Set();
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.passengerId) userIds.add(data.passengerId);
+          if (data.driverId) userIds.add(data.driverId);
+        });
 
-        for (const docSnapshot of snapshot.docs) {
-          const booking = { id: docSnapshot.id, ...docSnapshot.data() };
+        // ✅ Pre-fetch missing users in parallel (only uncached ones)
+        const uncachedIds = Array.from(userIds).filter((id) => {
+          const cached = userCache.get(id);
+          return !cached || Date.now() - cached.timestamp >= CACHE_EXPIRY;
+        });
 
-          // Fetch passenger name
-          let passengerName = "Unknown Passenger";
-          try {
-            const passengerDoc = await getDoc(
-              doc(db, "users", booking.passengerId)
-            );
-            if (passengerDoc.exists()) {
-              passengerName =
-                passengerDoc.data().displayName || "Unknown Passenger";
-            }
-          } catch (error) {
-            console.error("Error fetching passenger:", error);
-          }
-
-          // Fetch driver name if assigned
-          let driverName = "No driver assigned";
-          if (booking.driverId) {
-            try {
-              const driverDoc = await getDoc(
-                doc(db, "users", booking.driverId)
-              );
-              if (driverDoc.exists()) {
-                driverName = driverDoc.data().displayName || "Unknown Driver";
-              }
-            } catch (error) {
-              console.error("Error fetching driver:", error);
-            }
-          }
-
-          bookingsData.push({
-            booking,
-            passengerName,
-            driverName,
-          });
+        if (uncachedIds.length > 0) {
+          console.log(
+            `🔄 Pre-fetching ${uncachedIds.length} uncached users...`
+          );
+          await Promise.all(uncachedIds.map((id) => getCachedUser(id)));
         }
+
+        // ✅ Build rides data using cache
+        const bookingsData = await Promise.all(
+          snapshot.docs.map(async (docSnapshot) => {
+            const booking = { id: docSnapshot.id, ...docSnapshot.data() };
+
+            const passenger = await getCachedUser(booking.passengerId);
+            const driver = booking.driverId
+              ? await getCachedUser(booking.driverId)
+              : null;
+
+            return {
+              booking,
+              passengerName: passenger?.displayName || "Unknown Passenger",
+              driverName: driver?.displayName || "No driver assigned",
+            };
+          })
+        );
 
         setActiveRides(bookingsData);
         setLastUpdated(Date.now());
@@ -175,7 +193,7 @@ export default function LiveMonitoringScreen() {
     return () => unsubscribe();
   }, [onlineDriverLocations.length]);
 
-  // Monitor online drivers in real-time
+  // Monitor online drivers
   useEffect(() => {
     console.log("🔥 Starting to observe online drivers");
 
@@ -184,10 +202,10 @@ export default function LiveMonitoringScreen() {
     const unsubscribe = onValue(
       driverStatusRef,
       async (statusSnapshot) => {
-        console.log("🔥 REAL-TIME: Driver status changed, processing...");
+        console.log("🔥 REAL-TIME: Driver status changed");
 
         const onlineDriverIds = [];
-        const maxStatusAge = 5 * 60 * 1000; // 5 minutes
+        const maxStatusAge = 5 * 60 * 1000;
         const currentTime = Date.now();
 
         statusSnapshot.forEach((driverSnapshot) => {
@@ -210,7 +228,6 @@ export default function LiveMonitoringScreen() {
           return;
         }
 
-        // Get driver locations
         const driverLocationsRef = dbRef(database, "driver_locations");
         const locationsSnapshot = await get(driverLocationsRef);
 
@@ -236,16 +253,13 @@ export default function LiveMonitoringScreen() {
           }
         });
 
-        console.log(
-          `🔥 REAL-TIME: Updated driver locations: ${onlineDrivers.length}`
-        );
+        console.log(`🔥 Updated driver locations: ${onlineDrivers.length}`);
         setOnlineDriverLocations(onlineDrivers);
         setLastUpdated(Date.now());
         setSystemHealth(
           calculateSystemHealth(activeRides.length, onlineDrivers.length)
         );
 
-        // Update map markers
         updateMapMarkers(onlineDrivers);
       },
       (error) => {
@@ -257,15 +271,12 @@ export default function LiveMonitoringScreen() {
     return () => unsubscribe();
   }, [activeRides.length]);
 
-  // Update map markers
   const updateMapMarkers = (drivers) => {
     if (!map.current) return;
 
-    // Clear existing markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
 
-    // Add driver markers
     drivers.forEach((driver) => {
       const el = document.createElement("div");
       el.className = "driver-marker";
@@ -291,7 +302,6 @@ export default function LiveMonitoringScreen() {
     });
   };
 
-  // Emergency stop ride
   const emergencyStopRide = async (bookingId) => {
     if (!window.confirm("Are you sure you want to emergency stop this ride?")) {
       return;
@@ -338,7 +348,6 @@ export default function LiveMonitoringScreen() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 p-6">
-      {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
@@ -362,10 +371,12 @@ export default function LiveMonitoringScreen() {
               </span>
             </div>
           </div>
+          <div className="text-sm text-gray-600">
+            Cache: {userCache.size} users
+          </div>
         </div>
       </div>
 
-      {/* Error Message */}
       {errorMessage && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center">
           <AlertTriangle className="w-5 h-5 text-red-600 mr-3" />
@@ -376,7 +387,6 @@ export default function LiveMonitoringScreen() {
         </div>
       )}
 
-      {/* Map Container */}
       <div className="flex-1 relative rounded-lg overflow-hidden shadow-lg">
         <div ref={mapContainer} className="w-full h-full" />
 
@@ -384,7 +394,6 @@ export default function LiveMonitoringScreen() {
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-11/12 max-w-4xl">
           <div className="bg-white/95 backdrop-blur rounded-lg shadow-xl p-4">
             <div className="flex justify-around items-center">
-              {/* Active Rides */}
               <div className="text-center">
                 <p className="text-3xl font-bold text-blue-600">
                   {activeRides.length}
@@ -394,7 +403,6 @@ export default function LiveMonitoringScreen() {
 
               <div className="w-px h-10 bg-gray-300" />
 
-              {/* Online Drivers */}
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-600">
                   {onlineDriverLocations.length}
@@ -404,7 +412,6 @@ export default function LiveMonitoringScreen() {
 
               <div className="w-px h-10 bg-gray-300" />
 
-              {/* System Health */}
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2">
                   <Activity

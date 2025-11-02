@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  limit,
+} from "firebase/firestore";
 import { db } from "../config/firebase";
 import { ref, onValue } from "firebase/database";
 import { rtdb } from "../config/firebase";
@@ -12,6 +18,9 @@ import {
   User,
   AlertCircle,
 } from "lucide-react";
+
+// ✅ THROTTLE: Prevent excessive updates
+const THROTTLE_DELAY = 3000; // 3 seconds
 
 function QuickActionCard({
   icon: Icon,
@@ -90,149 +99,196 @@ export default function HomeScreen({ onNavigate }) {
 
   const [recentActivity, setRecentActivity] = useState([]);
 
-  useEffect(() => {
-    // Subscription for Users
-    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
-      const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  // ✅ Throttling refs
+  const lastUpdateTime = useRef(0);
+  const pendingUpdate = useRef(null);
 
-      const verifiedDrivers = users.filter(
-        (u) =>
-          u.userType === "DRIVER" &&
-          u.driverData?.verificationStatus === "APPROVED"
-      ).length;
+  // ✅ Helper function to throttle updates
+  const throttledSetStats = (updateFn) => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTime.current;
 
-      const pendingDrivers = users.filter(
-        (u) =>
-          u.userType === "DRIVER" &&
-          ["PENDING", "UNDER_REVIEW", "REJECTED"].includes(
-            u.driverData?.verificationStatus
-          )
-      ).length;
-
-      const pendingPassengers = users.filter(
-        (u) =>
-          u.userType === "PASSENGER" &&
-          ["PENDING", "PENDING_REVIEW", "REJECTED"].includes(
-            u.studentDocument?.status
-          )
-      ).length;
-
-      const totalPassengers = users.filter(
-        (u) => u.userType === "PASSENGER"
-      ).length;
-
-      setStats((prev) => ({
-        ...prev,
-        verifiedDrivers,
-        pendingApplications: pendingDrivers + pendingPassengers,
-        totalUsers: users.length,
-        onlineDrivers: prev.onlineDrivers,
-        totalPassengers,
-      }));
-    });
-
-    // Realtime Database Listener for online status
-    const driversStatusRef = ref(rtdb, "driver_status");
-
-    const unsubRtdb = onValue(driversStatusRef, (snapshot) => {
-      let onlineCount = 0;
-      const statusData = snapshot.val(); // Get all status data
-
-      if (statusData) {
-        // Iterate through all drivers in the 'driver_status' node
-        Object.values(statusData).forEach((status) => {
-          // Count if the driver object has 'online: true'
-          if (status.online === true) {
-            onlineCount++;
-          }
-        });
+    if (timeSinceLastUpdate >= THROTTLE_DELAY) {
+      updateFn();
+      lastUpdateTime.current = now;
+    } else {
+      // Clear any pending update
+      if (pendingUpdate.current) {
+        clearTimeout(pendingUpdate.current);
       }
+      // Schedule update
+      pendingUpdate.current = setTimeout(() => {
+        updateFn();
+        lastUpdateTime.current = Date.now();
+      }, THROTTLE_DELAY - timeSinceLastUpdate);
+    }
+  };
 
-      // Update the state with the online driver count
-      setStats((prev) => ({ ...prev, onlineDrivers: onlineCount }));
+  useEffect(() => {
+    // ✅ Single listener for users with metadata changes disabled
+    const unsubUsers = onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        throttledSetStats(() => {
+          const users = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          const verifiedDrivers = users.filter(
+            (u) =>
+              u.userType === "DRIVER" &&
+              u.driverData?.verificationStatus === "APPROVED"
+          ).length;
+
+          const pendingDrivers = users.filter(
+            (u) =>
+              u.userType === "DRIVER" &&
+              ["PENDING", "UNDER_REVIEW", "REJECTED"].includes(
+                u.driverData?.verificationStatus
+              )
+          ).length;
+
+          const pendingPassengers = users.filter(
+            (u) =>
+              u.userType === "PASSENGER" &&
+              ["PENDING", "PENDING_REVIEW", "REJECTED"].includes(
+                u.studentDocument?.status
+              )
+          ).length;
+
+          const totalPassengers = users.filter(
+            (u) => u.userType === "PASSENGER"
+          ).length;
+
+          setStats((prev) => ({
+            ...prev,
+            verifiedDrivers,
+            pendingApplications: pendingDrivers + pendingPassengers,
+            totalUsers: users.length,
+            totalPassengers,
+          }));
+        });
+      },
+      { includeMetadataChanges: false } // ✅ Critical: Ignore metadata changes
+    );
+
+    // ✅ RTDB listener for online drivers
+    const driversStatusRef = ref(rtdb, "driver_status");
+    const unsubRtdb = onValue(driversStatusRef, (snapshot) => {
+      throttledSetStats(() => {
+        let onlineCount = 0;
+        const statusData = snapshot.val();
+
+        if (statusData) {
+          Object.values(statusData).forEach((status) => {
+            if (status.online === true) {
+              onlineCount++;
+            }
+          });
+        }
+
+        setStats((prev) => ({ ...prev, onlineDrivers: onlineCount }));
+      });
     });
 
-    // Subscription for Bookings
+    // ✅ Single listener for bookings with limit
     const unsubBookings = onSnapshot(
       query(
         collection(db, "bookings"),
-        where("status", "in", ["ACCEPTED", "DRIVER_ARRIVED", "IN_PROGRESS"])
+        // ✅ Removed the "in" query to avoid multiple index combinations
+        limit(200) // ✅ Limit to prevent excessive reads
       ),
       (snapshot) => {
-        setStats((prev) => ({ ...prev, ongoingRides: snapshot.size }));
-      }
-    );
-
-    // Subscription for completed rides today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTimestamp = today.getTime();
-
-    const unsubCompleted = onSnapshot(
-      query(collection(db, "bookings"), where("status", "==", "COMPLETED")),
-      (snapshot) => {
-        const completedBookings = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        const completedToday = completedBookings.filter((booking) => {
-          const completionTimestamp = booking.completionTime;
-          return completionTimestamp && completionTimestamp >= todayTimestamp;
-        }).length;
-
-        setStats((prev) => ({ ...prev, completedToday }));
-
-        // Get recent activity from all bookings
-        const activities = completedBookings
-          .sort((a, b) => (b.completionTime || 0) - (a.completionTime || 0))
-          .slice(0, 5)
-          .map((booking) => ({
-            id: booking.id,
-            type: "ride_completed",
-            timestamp: booking.completionTime,
-            data: booking,
+        throttledSetStats(() => {
+          const bookings = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
           }));
 
-        setRecentActivity(activities);
-      }
+          // Filter in memory
+          const ongoingRides = bookings.filter((b) =>
+            ["ACCEPTED", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(b.status)
+          ).length;
+
+          // Get completed today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayTimestamp = today.getTime();
+
+          const completedBookings = bookings.filter(
+            (b) => b.status === "COMPLETED"
+          );
+          const completedToday = completedBookings.filter(
+            (b) => b.completionTime && b.completionTime >= todayTimestamp
+          ).length;
+
+          setStats((prev) => ({ ...prev, ongoingRides, completedToday }));
+
+          // Recent activity (top 5)
+          const activities = completedBookings
+            .sort((a, b) => (b.completionTime || 0) - (a.completionTime || 0))
+            .slice(0, 5)
+            .map((booking) => ({
+              id: booking.id,
+              type: "ride_completed",
+              timestamp: booking.completionTime,
+              data: booking,
+            }));
+
+          setRecentActivity(activities);
+        });
+      },
+      { includeMetadataChanges: false }
     );
 
-    // Subscription for reports
+    // ✅ Reports listener (NO throttling - these update infrequently)
     const unsubDriverReports = onSnapshot(
-      query(collection(db, "driver_reports"), where("status", "==", "PENDING")),
+      query(
+        collection(db, "driver_reports"),
+        where("status", "==", "PENDING"),
+        limit(100)
+      ),
       (snapshot) => {
-        const count = snapshot.size;
-        setReportsCount((prev) => ({ ...prev, driver: count }));
-      }
+        setReportsCount((prev) => ({ ...prev, driver: snapshot.size }));
+      },
+      { includeMetadataChanges: false }
     );
 
     const unsubPassengerReports = onSnapshot(
       query(
         collection(db, "passenger_reports"),
-        where("status", "==", "pending")
+        where("status", "==", "pending"),
+        limit(100)
       ),
       (snapshot) => {
-        const count = snapshot.size;
-        setReportsCount((prev) => ({ ...prev, passenger: count }));
-      }
+        setReportsCount((prev) => ({ ...prev, passenger: snapshot.size }));
+      },
+      { includeMetadataChanges: false }
     );
 
     const unsubSupportComments = onSnapshot(
-      query(collection(db, "supportTickets"), where("status", "==", "open")),
+      query(
+        collection(db, "supportTickets"),
+        where("status", "==", "open"),
+        limit(100)
+      ),
       (snapshot) => {
-        const count = snapshot.size;
-        setReportsCount((prev) => ({ ...prev, support: count }));
-      }
+        setReportsCount((prev) => ({ ...prev, support: snapshot.size }));
+      },
+      { includeMetadataChanges: false }
     );
 
     return () => {
       unsubUsers();
       unsubRtdb();
       unsubBookings();
-      unsubCompleted();
       unsubDriverReports();
       unsubPassengerReports();
       unsubSupportComments();
+      if (pendingUpdate.current) {
+        clearTimeout(pendingUpdate.current);
+      }
     };
   }, []);
 
@@ -240,7 +296,7 @@ export default function HomeScreen({ onNavigate }) {
     const total =
       reportsCount.driver + reportsCount.passenger + reportsCount.support;
     setStats((prev) => ({ ...prev, totalReports: total }));
-  }, [reportsCount]);
+  }, [reportsCount.driver, reportsCount.passenger, reportsCount.support]);
 
   const statCards = [
     {

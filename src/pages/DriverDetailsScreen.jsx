@@ -11,6 +11,9 @@ import {
   Info,
   AlertCircle,
   ChevronRight,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react";
 import { db } from "../config/firebase";
 
@@ -145,7 +148,8 @@ function DriverDetailsScreen({
       "vehicle_inspection",
     ];
 
-    return requiredDocs.every((docType) => {
+    // Check if all documents are approved
+    const allDocsApproved = requiredDocs.every((docType) => {
       const doc = driver.driverData.documents[docType];
       return (
         doc &&
@@ -154,6 +158,17 @@ function DriverDetailsScreen({
         doc.status === DocumentStatus.APPROVED
       );
     });
+
+    // Check if vehicle data (plate number and color) are filled
+    const vehicleData = driver.driverData?.vehicleData;
+    const vehicleDataComplete =
+      vehicleData &&
+      vehicleData.plateNumber &&
+      vehicleData.plateNumber.trim() !== "" &&
+      vehicleData.color &&
+      vehicleData.color.trim() !== "";
+
+    return allDocsApproved && vehicleDataComplete;
   };
 
   const updateUserDiscount = async (discountPercentage) => {
@@ -173,6 +188,25 @@ function DriverDetailsScreen({
     } catch (err) {
       console.error("Error updating discount:", err);
       alert("Failed to update discount");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const updateVehicleData = async (plateNumber, color) => {
+    setProcessing(true);
+    try {
+      await updateDoc(doc(db, "users", driverId), {
+        "driverData.vehicleData.plateNumber": plateNumber,
+        "driverData.vehicleData.color": color,
+        updatedAt: Date.now(),
+      });
+
+      await loadDriverDetails();
+      alert("Vehicle information updated successfully");
+    } catch (err) {
+      console.error("Error updating vehicle data:", err);
+      alert("Failed to update vehicle information");
     } finally {
       setProcessing(false);
     }
@@ -260,6 +294,13 @@ function DriverDetailsScreen({
             {/* Personal Information */}
             <PersonalInformationSection driver={driver} />
 
+            {/* Vehicle Information */}
+            <VehicleInformationSection
+              driver={driver}
+              onUpdateVehicleData={updateVehicleData}
+              processing={processing}
+            />
+
             {/* Documents */}
             <DocumentsSection
               driver={driver}
@@ -342,6 +383,120 @@ function PersonalInformationSection({ driver }) {
         />
         <InfoRow label="Email" value={driver.email || "Not provided"} />
         <InfoRow label="Phone" value={driver.phoneNumber} />
+      </div>
+    </div>
+  );
+}
+
+// Vehicle Information Section with Edit Capability
+function VehicleInformationSection({
+  driver,
+  onUpdateVehicleData,
+  processing,
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [plateNumber, setPlateNumber] = useState(
+    driver.driverData?.vehicleData?.plateNumber || ""
+  );
+  const [color, setColor] = useState(
+    driver.driverData?.vehicleData?.color || ""
+  );
+
+  const handleSave = () => {
+    if (!plateNumber.trim() || !color.trim()) {
+      alert("Please fill in all fields");
+      return;
+    }
+    onUpdateVehicleData(plateNumber.trim(), color.trim());
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setPlateNumber(driver.driverData?.vehicleData?.plateNumber || "");
+    setColor(driver.driverData?.vehicleData?.color || "");
+    setIsEditing(false);
+  };
+
+  const vehicleData = driver.driverData?.vehicleData;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Vehicle Information
+        </h3>
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center space-x-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <Edit2 className="w-4 h-4" />
+            <span className="text-sm font-medium">Edit</span>
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {/* Editable Fields */}
+        {isEditing ? (
+          <>
+            <div className="py-2">
+              <label className="block text-gray-600 text-sm mb-1">
+                Plate Number
+              </label>
+              <input
+                type="text"
+                value={plateNumber}
+                onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter plate number"
+                disabled={processing}
+              />
+            </div>
+            <div className="py-2">
+              <label className="block text-gray-600 text-sm mb-1">Color</label>
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter vehicle color"
+                disabled={processing}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-2 pt-2">
+              <button
+                onClick={handleCancel}
+                disabled={processing}
+                className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+                <span>Cancel</span>
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={processing}
+                className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <InfoRow
+              label="Plate Number"
+              value={vehicleData?.plateNumber || "Not provided"}
+            />
+            <InfoRow
+              label="Color"
+              value={vehicleData?.color || "Not provided"}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -461,8 +616,8 @@ function DriverStatusDisplay({
 
       {!allDocsApproved && (
         <p className="text-sm text-red-600 text-center">
-          ⚠️ All documents must be approved before approving the driver
-          application
+          ⚠️ All documents must be approved and vehicle information (plate
+          number & color) must be filled before approving the driver application
         </p>
       )}
     </div>

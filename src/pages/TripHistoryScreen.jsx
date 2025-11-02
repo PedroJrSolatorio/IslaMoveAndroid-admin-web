@@ -1,31 +1,63 @@
-import React, { useState, useEffect } from "react";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 import { ArrowLeft, Car } from "lucide-react";
 import { db } from "../config/firebase";
+
+// ✅ CACHE: Store trip history to avoid refetching
+const tripCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export default function TripHistoryScreen({ userId, onNavigateBack }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [displayLimit, setDisplayLimit] = useState(20); // ✅ Pagination
+  const loadedRef = useRef(false);
 
   useEffect(() => {
-    loadTripHistory();
+    if (!loadedRef.current) {
+      loadTripHistory();
+      loadedRef.current = true;
+    }
   }, [userId]);
 
   const loadTripHistory = async () => {
     try {
       setLoading(true);
 
-      // Query rides/bookings where user is either passenger or driver
+      // ✅ Check cache first
+      const cached = tripCache.get(userId);
+      const now = Date.now();
+
+      if (cached && now - cached.timestamp < CACHE_DURATION) {
+        console.log("✅ Using cached trip history");
+        setTrips(cached.trips);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      console.log("🔥 Fetching trip history from Firestore");
+
+      // ✅ Query with limit to prevent excessive reads
       const ridesQuery = query(
         collection(db, "bookings"),
-        where("passengerId", "==", userId)
+        where("passengerId", "==", userId),
+        limit(100) // ✅ Limit to prevent large reads
       );
 
       const driverRidesQuery = query(
         collection(db, "bookings"),
-        where("driverId", "==", userId)
+        where("driverId", "==", userId),
+        limit(100)
       );
 
       const [passengerSnapshot, driverSnapshot] = await Promise.all([
@@ -44,6 +76,12 @@ export default function TripHistoryScreen({ userId, onNavigateBack }) {
       ).sort(
         (a, b) => (b.endTime || b.requestTime) - (a.endTime || a.requestTime)
       );
+
+      // ✅ Store in cache
+      tripCache.set(userId, {
+        trips: uniqueTrips,
+        timestamp: now,
+      });
 
       setTrips(uniqueTrips);
       setError(null);
@@ -99,6 +137,10 @@ export default function TripHistoryScreen({ userId, onNavigateBack }) {
     return `${pickup} to ${destination}`;
   };
 
+  // ✅ Display limited trips for better performance
+  const displayedTrips = trips.slice(0, displayLimit);
+  const hasMore = trips.length > displayLimit;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -124,7 +166,19 @@ export default function TripHistoryScreen({ userId, onNavigateBack }) {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Past Trips</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">Past Trips</h2>
+          {/* ✅ Refresh button */}
+          <button
+            onClick={() => {
+              tripCache.delete(userId);
+              loadTripHistory();
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Refresh
+          </button>
+        </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4">
@@ -141,56 +195,75 @@ export default function TripHistoryScreen({ userId, onNavigateBack }) {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {trips.map((trip) => (
-              <div
-                key={trip.id}
-                onClick={() => setSelectedTrip(trip)}
-                className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-center space-x-3">
-                  {/* Vehicle Icon */}
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <Car className="w-5 h-5 text-gray-600" />
-                  </div>
+          <>
+            <div className="space-y-3">
+              {displayedTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  onClick={() => setSelectedTrip(trip)}
+                  className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    {/* Vehicle Icon */}
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <Car className="w-5 h-5 text-gray-600" />
+                    </div>
 
-                  {/* Trip Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {formatRoute(trip)}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {formatTripTime(trip)}
-                    </p>
-                  </div>
+                    {/* Trip Details */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {formatRoute(trip)}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {formatTripTime(trip)}
+                      </p>
+                    </div>
 
-                  {/* Price and Status */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-gray-900">
-                      ₱{Math.floor(trip.fareEstimate?.totalEstimate || 0)}
-                    </p>
-                    <p
-                      className={`text-xs font-medium mt-1 ${
-                        trip.status === "COMPLETED"
-                          ? "text-green-600"
+                    {/* Price and Status */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-gray-900">
+                        ₱{Math.floor(trip.fareEstimate?.totalEstimate || 0)}
+                      </p>
+                      <p
+                        className={`text-xs font-medium mt-1 ${
+                          trip.status === "COMPLETED"
+                            ? "text-green-600"
+                            : trip.status === "CANCELLED_BY_PASSENGER" ||
+                              trip.status === "CANCELLED_BY_DRIVER"
+                            ? "text-red-600"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {trip.status === "COMPLETED"
+                          ? "Completed"
                           : trip.status === "CANCELLED_BY_PASSENGER" ||
                             trip.status === "CANCELLED_BY_DRIVER"
-                          ? "text-red-600"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {trip.status === "COMPLETED"
-                        ? "Completed"
-                        : trip.status === "CANCELLED_BY_PASSENGER" ||
-                          trip.status === "CANCELLED_BY_DRIVER"
-                        ? "Cancelled"
-                        : trip.status?.replace(/_/g, " ")}
-                    </p>
+                          ? "Cancelled"
+                          : trip.status?.replace(/_/g, " ")}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* ✅ Load More button */}
+            {hasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setDisplayLimit((prev) => prev + 20)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Load More ({trips.length - displayLimit} remaining)
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* ✅ Trip count */}
+            <p className="text-sm text-gray-500 text-center mt-4">
+              Showing {displayedTrips.length} of {trips.length} trips
+            </p>
+          </>
         )}
       </div>
 
