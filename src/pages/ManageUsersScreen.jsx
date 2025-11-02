@@ -26,6 +26,8 @@ const StatusFilter = {
   PENDING: "PENDING",
   REJECTED: "REJECTED",
   UNDER_REVIEW: "UNDER_REVIEW",
+  HAS_REPORTS: "HAS_REPORTS",
+  HAS_COMMENTS: "HAS_COMMENTS",
 };
 
 const VerificationStatus = {
@@ -193,28 +195,45 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
             break;
           case StatusFilter.VERIFIED:
             matchesStatus =
-              user.userType === "DRIVER" &&
-              user.driverData?.verificationStatus ===
-                VerificationStatus.APPROVED;
+              (user.userType === "DRIVER" &&
+                user.driverData?.verificationStatus ===
+                  VerificationStatus.APPROVED) ||
+              (user.userType === "PASSENGER" &&
+                user.studentDocument?.status === "APPROVED");
             break;
           case StatusFilter.PENDING:
             matchesStatus =
-              user.userType === "DRIVER" &&
-              (!user.driverData?.verificationStatus ||
-                user.driverData?.verificationStatus ===
-                  VerificationStatus.PENDING);
+              (user.userType === "DRIVER" &&
+                (!user.driverData?.verificationStatus ||
+                  user.driverData?.verificationStatus ===
+                    VerificationStatus.PENDING)) ||
+              (user.userType === "PASSENGER" &&
+                (!user.studentDocument?.status ||
+                  user.studentDocument?.status === "PENDING"));
             break;
           case StatusFilter.REJECTED:
             matchesStatus =
-              user.userType === "DRIVER" &&
-              user.driverData?.verificationStatus ===
-                VerificationStatus.REJECTED;
+              (user.userType === "DRIVER" &&
+                user.driverData?.verificationStatus ===
+                  VerificationStatus.REJECTED) ||
+              (user.userType === "PASSENGER" &&
+                user.studentDocument?.status === "REJECTED");
             break;
           case StatusFilter.UNDER_REVIEW:
             matchesStatus =
               user.userType === "DRIVER" &&
               user.driverData?.verificationStatus ===
                 VerificationStatus.UNDER_REVIEW;
+            break;
+          case StatusFilter.HAS_REPORTS:
+            const reportCount =
+              user.userType === "DRIVER"
+                ? driverReportCounts[user.uid] || 0
+                : passengerReportCounts[user.uid] || 0;
+            matchesStatus = reportCount > 0;
+            break;
+          case StatusFilter.HAS_COMMENTS:
+            matchesStatus = (userCommentCounts[user.uid] || 0) > 0;
             break;
           default:
             matchesStatus = true;
@@ -230,7 +249,16 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   const getStatusFilterOptions = () => {
     switch (selectedFilter) {
       case UserFilter.PASSENGER:
-        return [StatusFilter.ALL, StatusFilter.ACTIVE, StatusFilter.BLOCKED];
+        return [
+          StatusFilter.ALL,
+          StatusFilter.ACTIVE,
+          StatusFilter.BLOCKED,
+          StatusFilter.VERIFIED,
+          StatusFilter.PENDING,
+          StatusFilter.REJECTED,
+          StatusFilter.HAS_REPORTS,
+          StatusFilter.HAS_COMMENTS,
+        ];
       case UserFilter.DRIVER:
         return [
           StatusFilter.ALL,
@@ -238,9 +266,15 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           StatusFilter.PENDING,
           StatusFilter.REJECTED,
           StatusFilter.UNDER_REVIEW,
+          StatusFilter.HAS_REPORTS,
+          StatusFilter.HAS_COMMENTS,
         ];
       default:
-        return [StatusFilter.ALL];
+        return [
+          StatusFilter.ALL,
+          StatusFilter.HAS_REPORTS,
+          StatusFilter.HAS_COMMENTS,
+        ];
     }
   };
 
@@ -252,14 +286,24 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
         return "Active";
       case StatusFilter.BLOCKED:
         return "Blocked";
-      case StatusFilter.VERIFIED:
-        return "Verified";
-      case StatusFilter.PENDING:
-        return "Pending";
-      case StatusFilter.REJECTED:
-        return "Rejected";
       case StatusFilter.UNDER_REVIEW:
         return "Under Review";
+      case StatusFilter.VERIFIED:
+        return selectedFilter === UserFilter.PASSENGER
+          ? "Student Verified"
+          : "Verified";
+      case StatusFilter.PENDING:
+        return selectedFilter === UserFilter.PASSENGER
+          ? "Student Pending"
+          : "Pending";
+      case StatusFilter.REJECTED:
+        return selectedFilter === UserFilter.PASSENGER
+          ? "Student Rejected"
+          : "Rejected";
+      case StatusFilter.HAS_REPORTS:
+        return "Has Reports";
+      case StatusFilter.HAS_COMMENTS:
+        return "Has Comments";
       default:
         return "Status";
     }
@@ -292,8 +336,47 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
         default:
           return { bg: "bg-gray-100", text: "text-gray-700", label: "Pending" };
       }
+    } else if (user.userType === "PASSENGER") {
+      // Check for Student Document Status
+      const docStatus = user.studentDocument?.status;
+      switch (docStatus) {
+        case "APPROVED":
+          return {
+            bg: "bg-green-100",
+            text: "text-green-700",
+            label: "Student Verified",
+          };
+        case "PENDING":
+          return {
+            bg: "bg-gray-100",
+            text: "text-gray-700",
+            label: "Pending",
+          };
+        case "PENDING_REVIEW":
+          return {
+            bg: "bg-blue-100",
+            text: "text-blue-700",
+            label: "Pending Review",
+          };
+        case "REJECTED":
+          return {
+            bg: "bg-red-100",
+            text: "text-red-700",
+            label: "Student Rejected",
+          };
+        default:
+          // Fallback to Active/Blocked status if no document status
+          if (!user.isActive) {
+            return { bg: "bg-red-100", text: "text-red-700", label: "Blocked" };
+          }
+          return {
+            bg: "bg-green-100",
+            text: "text-green-700",
+            label: "Active",
+          };
+      }
     } else {
-      // For passengers and admins
+      // For admins and other user types
       if (!user.isActive) {
         return { bg: "bg-red-100", text: "text-red-700", label: "Blocked" };
       }

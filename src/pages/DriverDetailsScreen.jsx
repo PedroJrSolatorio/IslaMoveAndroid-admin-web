@@ -453,7 +453,7 @@ function DriverStatusDisplay({
         <button
           onClick={onApprove}
           disabled={processing || !allDocsApproved}
-          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 !bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Approve
         </button>

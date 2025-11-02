@@ -169,7 +169,7 @@ function VerificationScreen({ onNavigateToDetails }) {
           onClick={() => setFilterType("ALL")}
           className={`px-3 py-1 rounded-full border ${
             filterType === "ALL"
-              ? "bg-blue-600 text-white"
+              ? "!bg-blue-600 text-white"
               : "bg-white text-gray-700"
           }`}
         >
@@ -179,7 +179,7 @@ function VerificationScreen({ onNavigateToDetails }) {
           onClick={() => setFilterType("DRIVER")}
           className={`px-3 py-1 rounded-full border ${
             filterType === "DRIVER"
-              ? "bg-blue-600 text-white"
+              ? "!bg-blue-600 text-white"
               : "bg-white text-gray-700"
           }`}
         >
@@ -189,7 +189,7 @@ function VerificationScreen({ onNavigateToDetails }) {
           onClick={() => setFilterType("PASSENGER")}
           className={`px-3 py-1 rounded-full border ${
             filterType === "PASSENGER"
-              ? "bg-blue-600 text-white"
+              ? "!bg-blue-600 text-white"
               : "bg-white text-gray-700"
           }`}
         >

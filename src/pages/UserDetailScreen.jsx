@@ -524,7 +524,7 @@ export default function UserDetailScreen({
             {user.userType !== "ADMIN" && (
               <button
                 onClick={() => setShowDeleteDialog(true)}
-                className="mt-4 px-6 py-2 bg-red-600 text-black rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                className="mt-4 px-6 py-2 !bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete User</span>
@@ -617,11 +617,11 @@ export default function UserDetailScreen({
                 <button
                   onClick={() => updateActiveStatus(!isActive)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isActive ? "bg-green-600" : "bg-red-600"
+                    isActive ? "!bg-green-600" : "!bg-red-600"
                   }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full !bg-white transition-transform ${
                       isActive ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
@@ -696,11 +696,11 @@ export default function UserDetailScreen({
                     <button
                       onClick={() => updateVerification(!isVerified)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        isVerified ? "bg-green-600" : "bg-gray-300"
+                        isVerified ? "!bg-green-600" : "!bg-gray-300"
                       }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full !bg-white transition-transform ${
                           isVerified ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
@@ -1277,7 +1277,7 @@ export default function UserDetailScreen({
                   setShowDeleteDialog(false);
                 }}
                 disabled={processing}
-                className={`px-4 py-2 bg-red-600 text-black rounded-lg hover:bg-red-700 transition-colors ${
+                className={`px-4 py-2 !bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors ${
                   processing ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >

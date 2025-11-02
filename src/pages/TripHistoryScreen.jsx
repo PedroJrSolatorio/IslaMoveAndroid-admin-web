@@ -328,7 +328,7 @@ function TripDetailsModal({ trip, onClose }) {
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+            className="w-full py-3 !bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
           >
             Close
           </button>

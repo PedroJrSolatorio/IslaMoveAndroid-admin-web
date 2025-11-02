@@ -360,7 +360,7 @@ function DocumentDetailsScreen({
               <button
                 onClick={approveDocument}
                 disabled={processing}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors"
+                className="flex-1 px-4 py-3 !bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors"
               >
                 Approve Document
               </button>
