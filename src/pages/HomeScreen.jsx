@@ -322,7 +322,7 @@ export default function HomeScreen({ onNavigate }) {
       color: "green",
     },
     {
-      title: "Completed Today",
+      title: "Completed Todayss",
       value: stats.completedToday,
       icon: TrendingUp,
       color: "yellow",
