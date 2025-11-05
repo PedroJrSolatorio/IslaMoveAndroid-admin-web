@@ -438,7 +438,9 @@ export default function HomeScreen({ onNavigate }) {
                 key={activity.id}
                 icon={Car}
                 title="Ride Completed"
-                description={`Fare: ₱${activity.data.actualFare || 0}`}
+                description={`Fare: ₱${
+                  activity.fareEstimate.totalEstimate || 0
+                }`}
                 time={
                   new Date(activity.timestamp).toLocaleString() || "Unknown"
                 }
