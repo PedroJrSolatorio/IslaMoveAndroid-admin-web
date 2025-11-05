@@ -215,12 +215,16 @@ export default function HomeScreen({ onNavigate }) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const todayTimestamp = today.getTime();
+          const currentTime = Date.now();
 
           const completedBookings = bookings.filter(
             (b) => b.status === "COMPLETED"
           );
-          const completedToday = completedBookings.filter(
-            (b) => b.completionTime && b.completionTime >= todayTimestamp
+          const completedToday = bookings.filter(
+            (b) =>
+              b.status === "COMPLETED" &&
+              b.requestTime >= todayTimestamp &&
+              b.requestTime <= currentTime
           ).length;
 
           setStats((prev) => ({ ...prev, ongoingRides, completedToday }));
