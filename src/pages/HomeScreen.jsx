@@ -125,6 +125,11 @@ export default function HomeScreen({ onNavigate }) {
   };
 
   useEffect(() => {
+    // ✅ Define todayTimestamp at the top
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
     // ✅ Single listener for users with metadata changes disabled
     const unsubUsers = onSnapshot(
       collection(db, "users"),
@@ -196,61 +201,44 @@ export default function HomeScreen({ onNavigate }) {
     const unsubBookings = onSnapshot(
       query(
         collection(db, "bookings"),
-        // ✅ Removed the "in" query to avoid multiple index combinations
-        limit(200) // ✅ Limit to prevent excessive reads
+        where("requestTime", ">=", todayTimestamp),
+        limit(200)
       ),
       (snapshot) => {
-        throttledSetStats(() => {
-          const bookings = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
+        const bookings = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        // Filter in memory
+        const ongoingRides = bookings.filter((b) =>
+          ["ACCEPTED", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(b.status)
+        ).length;
+
+        const completedBookings = bookings.filter(
+          (b) => b.status === "COMPLETED"
+        );
+
+        const currentTime = Date.now();
+        const completedToday = completedBookings.filter(
+          (b) => b.requestTime >= todayTimestamp && b.requestTime <= currentTime
+        ).length;
+
+        // ✅ UPDATE IMMEDIATELY (no throttle for bookings - they're already limited)
+        setStats((prev) => ({ ...prev, ongoingRides, completedToday }));
+
+        // Recent activity (top 5)
+        const activities = completedBookings
+          .sort((a, b) => (b.completionTime || 0) - (a.completionTime || 0))
+          .slice(0, 5)
+          .map((booking) => ({
+            id: booking.id,
+            type: "ride_completed",
+            timestamp: booking.completionTime,
+            data: booking,
           }));
 
-          // Filter in memory
-          const ongoingRides = bookings.filter((b) =>
-            ["ACCEPTED", "DRIVER_ARRIVED", "IN_PROGRESS"].includes(b.status)
-          ).length;
-
-          // Get completed today
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const todayTimestamp = today.getTime();
-          const currentTime = Date.now();
-
-          const completedBookings = bookings.filter(
-            (b) => b.status === "COMPLETED"
-          );
-
-          // 🔍 DEBUG: Check what fields exist
-          if (completedBookings.length > 0) {
-            console.log("Sample completed booking:", completedBookings[0]);
-            console.log("Today timestamp:", todayTimestamp);
-            console.log("Current time:", Date.now());
-          }
-
-          const completedToday = completedBookings.filter(
-            (b) =>
-              b.requestTime >= todayTimestamp && b.requestTime <= currentTime
-          ).length;
-
-          console.log("Completed today count:", completedToday);
-          console.log("Total completed bookings:", completedBookings.length);
-
-          setStats((prev) => ({ ...prev, ongoingRides, completedToday }));
-
-          // Recent activity (top 5)
-          const activities = completedBookings
-            .sort((a, b) => (b.completionTime || 0) - (a.completionTime || 0))
-            .slice(0, 5)
-            .map((booking) => ({
-              id: booking.id,
-              type: "ride_completed",
-              timestamp: booking.completionTime,
-              data: booking,
-            }));
-
-          setRecentActivity(activities);
-        });
+        setRecentActivity(activities);
       },
       { includeMetadataChanges: false }
     );
@@ -452,7 +440,7 @@ export default function HomeScreen({ onNavigate }) {
                 icon={Car}
                 title="Ride Completed"
                 description={`Fare: ₱${
-                  activity.fareEstimate.totalEstimate || 0
+                  activity.fareEstimate?.totalEstimate || 0
                 }`}
                 time={
                   new Date(activity.timestamp).toLocaleString() || "Unknown"
