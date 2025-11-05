@@ -220,12 +220,21 @@ export default function HomeScreen({ onNavigate }) {
           const completedBookings = bookings.filter(
             (b) => b.status === "COMPLETED"
           );
-          const completedToday = bookings.filter(
+
+          // 🔍 DEBUG: Check what fields exist
+          if (completedBookings.length > 0) {
+            console.log("Sample completed booking:", completedBookings[0]);
+            console.log("Today timestamp:", todayTimestamp);
+            console.log("Current time:", Date.now());
+          }
+
+          const completedToday = completedBookings.filter(
             (b) =>
-              b.status === "COMPLETED" &&
-              b.requestTime >= todayTimestamp &&
-              b.requestTime <= currentTime
+              b.requestTime >= todayTimestamp && b.requestTime <= currentTime
           ).length;
+
+          console.log("Completed today count:", completedToday);
+          console.log("Total completed bookings:", completedBookings.length);
 
           setStats((prev) => ({ ...prev, ongoingRides, completedToday }));
 
