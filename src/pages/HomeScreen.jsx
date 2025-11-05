@@ -322,7 +322,7 @@ export default function HomeScreen({ onNavigate }) {
       color: "green",
     },
     {
-      title: "Completed Todayss",
+      title: "Completed Today",
       value: stats.completedToday,
       icon: TrendingUp,
       color: "yellow",
@@ -431,7 +431,7 @@ export default function HomeScreen({ onNavigate }) {
       </div>
 
       {/* Recent Activity */}
-      {/* <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Recent Activity
         </h2>
@@ -458,7 +458,7 @@ export default function HomeScreen({ onNavigate }) {
             </div>
           )}
         </div>
-      </div> */}
+      </div>
     </div>
   );
 }
