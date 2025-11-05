@@ -507,7 +507,7 @@ function DocumentsSection({ driver, onDocumentClick }) {
   const documentTypes = {
     license: "Driver's License",
     vehicle_registration: "Certificate of Registration (CR)",
-    insurance: "SJMODA Certification",
+    insurance: "Franchise Certificate",
     vehicle_inspection: "Official Receipt (OR)",
   };
 
