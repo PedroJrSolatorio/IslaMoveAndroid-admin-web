@@ -193,7 +193,7 @@ export default function ZoneBoundariesTab() {
               setBoundaryName("");
               setShowImportDialog(true);
             }}
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
+            className="px-4 py-2 !bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
           >
             <Upload className="w-4 h-4" />
             Import Boundary
