@@ -18,38 +18,39 @@ export default function BoundaryFareDialog({
           </p>
 
           <div className="space-y-2 mb-6">
-            {allBoundaries
-              .filter((b) => b.id !== boundary.id)
-              .map((targetBoundary) => (
-                <div
-                  key={targetBoundary.id}
-                  className="flex items-center gap-3"
-                >
-                  <span className="text-sm flex-1">
-                    → {targetBoundary.name}
-                  </span>
-                  <input
-                    type="number"
-                    value={fares[targetBoundary.name] || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFares((prev) => {
-                        const newFares = { ...prev };
-                        if (value) {
-                          newFares[targetBoundary.name] = parseFloat(value);
-                        } else {
-                          delete newFares[targetBoundary.name];
-                        }
-                        return newFares;
-                      });
-                    }}
-                    className="w-24 px-2 py-1 border rounded text-sm"
-                    placeholder="₱"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              ))}
+            {allBoundaries.map((targetBoundary) => (
+              <div key={targetBoundary.id} className="flex items-center gap-3">
+                <span className="text-sm flex-1">
+                  {targetBoundary.id === boundary.id ? (
+                    <span className="font-medium">
+                      ↻ {targetBoundary.name} (same zone)
+                    </span>
+                  ) : (
+                    <span>→ {targetBoundary.name}</span>
+                  )}
+                </span>
+                <input
+                  type="number"
+                  value={fares[targetBoundary.name] || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFares((prev) => {
+                      const newFares = { ...prev };
+                      if (value) {
+                        newFares[targetBoundary.name] = parseFloat(value);
+                      } else {
+                        delete newFares[targetBoundary.name];
+                      }
+                      return newFares;
+                    });
+                  }}
+                  className="w-24 px-2 py-1 border rounded text-sm"
+                  placeholder="₱"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            ))}
           </div>
 
           <div className="flex gap-2">
