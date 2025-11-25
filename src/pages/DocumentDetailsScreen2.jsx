@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ArrowLeft, FileText } from "lucide-react";
-import { db } from "../config/firebase";
+import { db, auth } from "../config/firebase";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const DocumentStatus = {
   PENDING: "PENDING",
@@ -11,12 +13,14 @@ const DocumentStatus = {
 };
 
 export default function DocumentDetailsScreen2({
+  //this screen is for viewing documents Manage Users tab
   userId,
   documentType,
   documentTitle,
   userType,
   onNavigateBack,
 }) {
+  const [user, setUser] = useState(null);
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState("");
@@ -38,6 +42,8 @@ export default function DocumentDetailsScreen2({
       }
 
       const userData = userDoc.data();
+      setUser(userData);
+
       let docData = null;
 
       if (documentType === "passenger_id" && userData.studentDocument) {
@@ -72,6 +78,7 @@ export default function DocumentDetailsScreen2({
 
   const approveDocument = async () => {
     try {
+      console.log("🔍 Approving document type:", documentType);
       setProcessing(true);
 
       if (documentType === "passenger_id") {
@@ -79,6 +86,41 @@ export default function DocumentDetailsScreen2({
           "studentDocument.status": DocumentStatus.APPROVED,
           updatedAt: Date.now(),
         });
+
+        // Send approval email for passenger
+        const emailResult = await sendPassengerApprovalEmail(user);
+        if (!emailResult.success) {
+          console.error("Failed to send approval email:", emailResult.error);
+        }
+
+        // Delete temp files from Cloudinary
+        try {
+          const tempUserId = user.email; // Use email as tempUserId
+          const idToken = await auth.currentUser.getIdToken();
+
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-temp-registration-docs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({ tempUserId }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(`✅ Deleted ${data.deletedCount} temp files`);
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail approval if deletion fails
+        }
+
+        alert(
+          "Document approved successfully" +
+            (emailResult.success ? " and email sent" : "")
+        );
       } else {
         await updateDoc(doc(db, "users", userId), {
           [`driverData.documents.${documentType}.status`]:
@@ -86,9 +128,10 @@ export default function DocumentDetailsScreen2({
           [`driverData.documents.${documentType}.rejectionReason`]: null,
           updatedAt: Date.now(),
         });
+
+        alert("Document approved successfully");
       }
 
-      alert("Document approved successfully");
       onNavigateBack();
     } catch (error) {
       console.error("Error approving document:", error);
@@ -105,6 +148,7 @@ export default function DocumentDetailsScreen2({
     }
 
     try {
+      console.log("🔍 Rejecting document type:", documentType);
       setProcessing(true);
 
       if (documentType === "passenger_id") {
@@ -113,6 +157,43 @@ export default function DocumentDetailsScreen2({
           "studentDocument.rejectionReason": comments,
           updatedAt: Date.now(),
         });
+
+        // Send rejection email for passenger
+        const emailResult = await sendPassengerRejectionEmail(
+          user,
+          comments.trim()
+        );
+        if (!emailResult.success) {
+          console.error("Failed to send rejection email:", emailResult.error);
+        }
+
+        // Delete temp files from Cloudinary
+        try {
+          const tempUserId = user.email; // Use email as tempUserId
+          const idToken = await auth.currentUser.getIdToken();
+
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-temp-registration-docs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({ tempUserId }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(`✅ Deleted ${data.deletedCount} temp files`);
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail approval if deletion fails
+        }
+
+        alert(
+          "Document rejected" + (emailResult.success ? " and email sent" : "")
+        );
       } else {
         await updateDoc(doc(db, "users", userId), {
           [`driverData.documents.${documentType}.status`]:
@@ -120,9 +201,39 @@ export default function DocumentDetailsScreen2({
           [`driverData.documents.${documentType}.rejectionReason`]: comments,
           updatedAt: Date.now(),
         });
+
+        // // Delete ONLY this specific document type from Cloudinary
+        // try {
+        //   const tempUserId = user.email;
+        //   const idToken = await auth.currentUser.getIdToken();
+
+        //   const response = await fetch(
+        //     `${BACKEND_URL}/api/delete-specific-temp-doc`,
+        //     {
+        //       method: "POST",
+        //       headers: {
+        //         "Content-Type": "application/json",
+        //         Authorization: `Bearer ${idToken}`,
+        //       },
+        //       body: JSON.stringify({
+        //         tempUserId,
+        //         documentType,
+        //       }),
+        //     }
+        //   );
+
+        //   const data = await response.json();
+        //   console.log(
+        //     `✅ Deleted ${data.deletedCount} temp file(s) for ${documentType}`
+        //   );
+        // } catch (deleteError) {
+        //   console.error("⚠️ Failed to delete temp files:", deleteError);
+        //   // Don't fail rejection if deletion fails
+        // }
+
+        alert("Document rejected");
       }
 
-      alert("Document rejected");
       onNavigateBack();
     } catch (error) {
       console.error("Error rejecting document:", error);
@@ -297,7 +408,7 @@ export default function DocumentDetailsScreen2({
             <button
               onClick={approveDocument}
               disabled={processing}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 !bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {processing ? "Processing..." : "Approve Document"}
             </button>

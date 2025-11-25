@@ -329,7 +329,7 @@ export default function HomeScreen({ onNavigate }) {
   return (
     <div className="space-y-6">
       {/* Stats Grid - Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           const colors = {
@@ -358,9 +358,9 @@ export default function HomeScreen({ onNavigate }) {
       </div>
 
       {/* Action Items - Things that need attention */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Live Status */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4 lg:p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
             Live Status

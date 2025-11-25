@@ -367,7 +367,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Manage Users</h1>
@@ -487,7 +487,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           return (
             <div
               key={user.uid}
-              className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white rounded-lg shadow-sm p-3 lg:p-4 hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => onNavigateToUserDetail(user.uid)}
             >
               <div className="flex items-center justify-between">

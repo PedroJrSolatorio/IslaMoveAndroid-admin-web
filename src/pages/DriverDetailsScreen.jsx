@@ -15,7 +15,9 @@ import {
   Save,
   X,
 } from "lucide-react";
-import { db } from "../config/firebase";
+import { db, auth } from "../config/firebase";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const DocumentStatus = {
   PENDING: "PENDING",
@@ -93,6 +95,30 @@ function DriverDetailsScreen({
         console.error("Failed to send approval email:", emailResult.error);
       }
 
+      // Delete temp files from Cloudinary
+      try {
+        const tempUserId = driver.email; // Use email as tempUserId
+        const idToken = await auth.currentUser.getIdToken();
+
+        const response = await fetch(
+          `${BACKEND_URL}/api/delete-temp-registration-docs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ tempUserId }),
+          }
+        );
+
+        const data = await response.json();
+        console.log(`✅ Deleted ${data.deletedCount} temp files`);
+      } catch (deleteError) {
+        console.error("⚠️ Failed to delete temp files:", deleteError);
+        // Don't fail approval if deletion fails
+      }
+
       await loadDriverDetails();
       alert(
         "Driver approved successfully" +
@@ -123,6 +149,30 @@ function DriverDetailsScreen({
       const emailResult = await sendDriverRejectionEmail(driver, reason);
       if (!emailResult.success) {
         console.error("Failed to send rejection email:", emailResult.error);
+      }
+
+      // Delete temp files from Cloudinary
+      try {
+        const tempUserId = driver.email; // Use email as tempUserId
+        const idToken = await auth.currentUser.getIdToken();
+
+        const response = await fetch(
+          `${BACKEND_URL}/api/delete-temp-registration-docs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ tempUserId }),
+          }
+        );
+
+        const data = await response.json();
+        console.log(`✅ Deleted ${data.deletedCount} temp files`);
+      } catch (deleteError) {
+        console.error("⚠️ Failed to delete temp files:", deleteError);
+        // Don't fail approval if deletion fails
       }
 
       await loadDriverDetails();
@@ -169,6 +219,31 @@ function DriverDetailsScreen({
       vehicleData.color.trim() !== "";
 
     return allDocsApproved && vehicleDataComplete;
+  };
+
+  const checkAllDocumentsReviewed = () => {
+    if (!driver?.driverData?.documents) return false;
+
+    const requiredDocs = [
+      "license",
+      "vehicle_registration",
+      "insurance",
+      "vehicle_inspection",
+    ];
+
+    // Check if all documents have been reviewed (either approved or rejected)
+    const allDocsReviewed = requiredDocs.every((docType) => {
+      const doc = driver.driverData.documents[docType];
+      return (
+        doc &&
+        doc.images &&
+        doc.images.length > 0 &&
+        (doc.status === DocumentStatus.APPROVED ||
+          doc.status === DocumentStatus.REJECTED)
+      );
+    });
+
+    return allDocsReviewed;
   };
 
   const updateUserDiscount = async (discountPercentage) => {
@@ -324,6 +399,7 @@ function DriverDetailsScreen({
               onReject={rejectDriver}
               processing={processing}
               allDocsApproved={checkAllDocumentsApproved()}
+              allDocsReviewed={checkAllDocumentsReviewed()}
             />
           )}
         </div>
@@ -574,6 +650,7 @@ function DriverStatusDisplay({
   onReject,
   processing,
   allDocsApproved,
+  allDocsReviewed,
 }) {
   const status = driver.driverData?.verificationStatus;
 
@@ -600,7 +677,7 @@ function DriverStatusDisplay({
       <div className="flex space-x-3">
         <button
           onClick={onReject}
-          disabled={processing}
+          disabled={processing || !allDocsReviewed}
           className="flex-1 px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50"
         >
           Reject

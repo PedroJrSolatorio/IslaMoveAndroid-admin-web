@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ArrowLeft, AlertCircle } from "lucide-react";
-import { db } from "../config/firebase";
+import { db, auth } from "../config/firebase";
 import {
+  sendDriverApprovalEmail,
   sendPassengerApprovalEmail,
+  sendDriverRejectionEmail,
   sendPassengerRejectionEmail,
 } from "../services/BrevoEmailService";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const DocumentStatus = {
   PENDING: "PENDING",
@@ -15,6 +19,7 @@ const DocumentStatus = {
 };
 
 function DocumentDetailsScreen({
+  ////this screen is for viewing documents User Verification tab
   userId,
   documentType,
   documentTitle,
@@ -89,6 +94,7 @@ function DocumentDetailsScreen({
   };
 
   const approveDocument = async () => {
+    console.log("🔍 Approving document type:", documentType);
     setProcessing(true);
 
     try {
@@ -105,6 +111,30 @@ function DocumentDetailsScreen({
         const emailResult = await sendPassengerApprovalEmail(user);
         if (!emailResult.success) {
           console.error("Failed to send approval email:", emailResult.error);
+        }
+
+        // Delete temp files from Cloudinary
+        try {
+          const tempUserId = user.email; // Use email as tempUserId
+          const idToken = await auth.currentUser.getIdToken();
+
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-temp-registration-docs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({ tempUserId }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(`✅ Deleted ${data.deletedCount} temp files`);
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail approval if deletion fails
         }
 
         alert(
@@ -138,6 +168,7 @@ function DocumentDetailsScreen({
       return;
     }
 
+    console.log("🔍 Rejecting document type:", documentType);
     setProcessing(true);
 
     try {
@@ -159,6 +190,30 @@ function DocumentDetailsScreen({
           console.error("Failed to send rejection email:", emailResult.error);
         }
 
+        // Delete temp files from Cloudinary
+        try {
+          const tempUserId = user.email; // Use email as tempUserId
+          const idToken = await auth.currentUser.getIdToken();
+
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-temp-registration-docs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({ tempUserId }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(`✅ Deleted ${data.deletedCount} temp files`);
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail approval if deletion fails
+        }
+
         alert(
           "Document rejected" + (emailResult.success ? " and email sent" : "")
         );
@@ -171,6 +226,35 @@ function DocumentDetailsScreen({
             comments.trim(),
           updatedAt: Date.now(),
         });
+
+        // // Delete ONLY this specific document type from Cloudinary
+        // try {
+        //   const tempUserId = user.email;
+        //   const idToken = await auth.currentUser.getIdToken();
+
+        //   const response = await fetch(
+        //     `${BACKEND_URL}/api/delete-specific-temp-doc`,
+        //     {
+        //       method: "POST",
+        //       headers: {
+        //         "Content-Type": "application/json",
+        //         Authorization: `Bearer ${idToken}`,
+        //       },
+        //       body: JSON.stringify({
+        //         tempUserId,
+        //         documentType,
+        //       }),
+        //     }
+        //   );
+
+        //   const data = await response.json();
+        //   console.log(
+        //     `✅ Deleted ${data.deletedCount} temp file(s) for ${documentType}`
+        //   );
+        // } catch (deleteError) {
+        //   console.error("⚠️ Failed to delete temp files:", deleteError);
+        //   // Don't fail rejection if deletion fails
+        // }
 
         alert("Document rejected");
       }

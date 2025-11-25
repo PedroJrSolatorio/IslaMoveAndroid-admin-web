@@ -145,8 +145,8 @@ function VerificationScreen({ onNavigateToDetails }) {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6">
+        <h1 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-4">
           Verification Dashboard
         </h1>
 
@@ -158,13 +158,13 @@ function VerificationScreen({ onNavigateToDetails }) {
             placeholder="Search by name or date..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>
 
       {/* Filter toggle buttons */}
-      <div className="flex space-x-2 mt-4">
+      <div className="flex flex-wrap gap-2 mt-4">
         <button
           onClick={() => setFilterType("ALL")}
           className={`px-3 py-1 rounded-full border ${

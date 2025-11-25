@@ -250,7 +250,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-gray-50 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen w-screen bg-gray-50 overflow-hidden">
       <Sidebar
         currentScreen={currentScreen}
         setCurrentScreen={(screen) => {
