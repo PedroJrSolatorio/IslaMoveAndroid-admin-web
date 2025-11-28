@@ -18,7 +18,7 @@ export default function Sidebar({ currentScreen, setCurrentScreen, isOpen }) {
     { id: "users", label: "Manage Users", icon: Users },
     { id: "monitoring", label: "Live Monitoring", icon: MapPin },
     { id: "config", label: "System Config", icon: Settings },
-    { id: "analytics", label: "Reports & Analytics", icon: TrendingUp },
+    { id: "analytics", label: "Analytics", icon: TrendingUp },
   ];
 
   const sidebarWidthClass = isOpen ? "w-64" : "w-20";
