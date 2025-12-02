@@ -209,7 +209,7 @@ function DriverDetailsScreen({
       );
     });
 
-    // Check if vehicle data (plate number and color) are filled
+    // Check if vehicle data (body number and color) are filled. plate number is changed to body number, but database is still using plate number
     const vehicleData = driver.driverData?.vehicleData;
     const vehicleDataComplete =
       vehicleData &&
@@ -518,14 +518,14 @@ function VehicleInformationSection({
           <>
             <div className="py-2">
               <label className="block text-gray-600 text-sm mb-1">
-                Plate Number
+                Body Number
               </label>
               <input
                 type="text"
                 value={plateNumber}
                 onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter plate number"
+                placeholder="Enter body number"
                 disabled={processing}
               />
             </div>
@@ -564,7 +564,7 @@ function VehicleInformationSection({
         ) : (
           <>
             <InfoRow
-              label="Plate Number"
+              label="Body Number"
               value={vehicleData?.plateNumber || "Not provided"}
             />
             <InfoRow
