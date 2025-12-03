@@ -626,9 +626,7 @@ export default function UserDetailScreen({
             <h2 className="mt-4 text-2xl font-bold text-gray-900">
               {user.displayName || "No Name"}
             </h2>
-            <p className="text-sm text-gray-600">
-              User ID: {user.uid.substring(0, 8)}
-            </p>
+            <p className="text-sm text-gray-600">User ID: {user.uid}</p>
             <p className="text-sm text-gray-600">
               Joined: {formatDate(user.createdAt)}
             </p>
