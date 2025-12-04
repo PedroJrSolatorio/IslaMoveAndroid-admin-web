@@ -3,9 +3,7 @@ import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { db, auth } from "../config/firebase";
 import {
-  sendDriverApprovalEmail,
   sendPassengerApprovalEmail,
-  sendDriverRejectionEmail,
   sendPassengerRejectionEmail,
 } from "../services/BrevoEmailService";
 
@@ -37,6 +35,8 @@ function DocumentDetailsScreen({
   const [showAdditionalPhotoDialog, setShowAdditionalPhotoDialog] =
     useState(false);
   const [additionalPhotoType, setAdditionalPhotoType] = useState("");
+  const [expiryLoading, setExpiryLoading] = useState(false);
+  const [additionalPhotoLoading, setAdditionalPhotoLoading] = useState(false);
 
   useEffect(() => {
     loadDocumentDetails();
@@ -80,10 +80,20 @@ function DocumentDetailsScreen({
               userData.studentDocument.additionalPhotosRequired || [],
             additionalPhotos: userData.studentDocument.additionalPhotos || {},
           };
+
+          if (userData.studentDocument.expiryDate) {
+            const date = new Date(userData.studentDocument.expiryDate);
+            setExpiryDate(date.toISOString().split("T")[0]);
+          }
         }
       } else {
         // For driver documents
         documentData = userData.driverData?.documents?.[documentType];
+
+        if (documentData?.expiryDate) {
+          const date = new Date(documentData.expiryDate);
+          setExpiryDate(date.toISOString().split("T")[0]);
+        }
       }
 
       if (!documentData) {
@@ -103,8 +113,12 @@ function DocumentDetailsScreen({
   };
 
   const approveDocument = async () => {
-    if (!expiryDate) {
-      alert("Please set expiry date");
+    // Only check expiry date for passenger_id and insurance (franchise certificate)
+    if (
+      (documentType === "passenger_id" || documentType === "insurance") &&
+      !expiryDate
+    ) {
+      alert("Please set expiry date for this document type");
       return;
     }
 
@@ -296,6 +310,8 @@ function DocumentDetailsScreen({
       return;
     }
 
+    setExpiryLoading(true);
+
     try {
       const expiryTimestamp = new Date(expiryDate).getTime();
 
@@ -313,10 +329,13 @@ function DocumentDetailsScreen({
 
       alert("Expiry date set successfully");
       setShowExpiryDialog(false);
+      setExpiryDate("");
       loadDocumentDetails();
     } catch (error) {
       console.error("Error setting expiry date:", error);
       alert("Failed to set expiry date");
+    } finally {
+      setExpiryLoading(false);
     }
   };
 
@@ -326,6 +345,8 @@ function DocumentDetailsScreen({
       alert("Please specify what photo is needed");
       return;
     }
+
+    setAdditionalPhotoLoading(true);
 
     try {
       if (documentType === "passenger_id") {
@@ -349,6 +370,8 @@ function DocumentDetailsScreen({
     } catch (error) {
       console.error("Error requesting additional photo:", error);
       alert("Failed to request additional photo");
+    } finally {
+      setAdditionalPhotoLoading(false);
     }
   };
 
@@ -610,6 +633,7 @@ function DocumentDetailsScreen({
             documentType === "insurance") && (
             <button
               onClick={() => setShowExpiryDialog(true)}
+              disabled={processing || expiryLoading || additionalPhotoLoading}
               className="flex-1 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
             >
               Set Expiry Date
@@ -618,6 +642,7 @@ function DocumentDetailsScreen({
 
           <button
             onClick={() => setShowAdditionalPhotoDialog(true)}
+            disabled={processing || expiryLoading || additionalPhotoLoading}
             className="flex-1 px-4 py-2 border border-gray-600 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Request Additional Photo
@@ -639,14 +664,34 @@ function DocumentDetailsScreen({
             <div className="flex space-x-3">
               <button
                 onClick={rejectDocument}
-                disabled={processing || !comments || comments.trim() === ""}
+                disabled={
+                  processing ||
+                  !comments ||
+                  comments.trim() === "" ||
+                  expiryLoading ||
+                  additionalPhotoLoading
+                }
                 className="flex-1 px-4 py-3 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Reject Document
+                {processing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+                    Rejecting...
+                  </>
+                ) : (
+                  "Reject Document"
+                )}
               </button>
               <button
                 onClick={approveDocument}
-                disabled={processing || !expiryDate}
+                disabled={
+                  processing ||
+                  expiryLoading ||
+                  additionalPhotoLoading ||
+                  ((documentType === "passenger_id" ||
+                    documentType === "insurance") &&
+                    !expiryDate)
+                }
                 className="flex-1 px-4 py-3 !bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors"
               >
                 Approve Document
@@ -672,15 +717,24 @@ function DocumentDetailsScreen({
             <div className="flex space-x-3 mt-4">
               <button
                 onClick={() => setShowExpiryDialog(false)}
+                disabled={expiryLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={setDocumentExpiry}
+                disabled={expiryLoading}
                 className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Set Expiry
+                {expiryLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Setting...
+                  </>
+                ) : (
+                  "Set Expiry"
+                )}
               </button>
             </div>
           </div>
@@ -707,15 +761,24 @@ function DocumentDetailsScreen({
                   setShowAdditionalPhotoDialog(false);
                   setAdditionalPhotoType("");
                 }}
+                disabled={additionalPhotoLoading}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={requestAdditionalPhoto}
+                disabled={additionalPhotoLoading}
                 className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Request Photo
+                {additionalPhotoLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Requesting...
+                  </>
+                ) : (
+                  "Request Photo"
+                )}
               </button>
             </div>
           </div>
