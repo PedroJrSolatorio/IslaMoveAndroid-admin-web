@@ -437,9 +437,7 @@ function ProfileSection({ driver }) {
         </h2>
 
         {/* Application ID */}
-        <p className="text-gray-600">
-          Application ID: {driver.uid.substring(0, 6).toUpperCase()}
-        </p>
+        <p className="text-gray-600">User ID: {driver.uid}</p>
       </div>
     </div>
   );

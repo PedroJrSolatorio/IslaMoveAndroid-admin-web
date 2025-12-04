@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { db, auth } from "../config/firebase";
 import {
@@ -32,6 +32,11 @@ function DocumentDetailsScreen({
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [comments, setComments] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [showExpiryDialog, setShowExpiryDialog] = useState(false);
+  const [showAdditionalPhotoDialog, setShowAdditionalPhotoDialog] =
+    useState(false);
+  const [additionalPhotoType, setAdditionalPhotoType] = useState("");
 
   useEffect(() => {
     loadDocumentDetails();
@@ -70,6 +75,10 @@ function DocumentDetailsScreen({
             status: userData.studentDocument.status,
             rejectionReason: userData.studentDocument.rejectionReason,
             uploadedAt: userData.studentDocument.uploadedAt,
+            expiryDate: userData.studentDocument.expiryDate || null,
+            additionalPhotosRequired:
+              userData.studentDocument.additionalPhotosRequired || [],
+            additionalPhotos: userData.studentDocument.additionalPhotos || {},
           };
         }
       } else {
@@ -94,7 +103,11 @@ function DocumentDetailsScreen({
   };
 
   const approveDocument = async () => {
-    console.log("🔍 Approving document type:", documentType);
+    if (!expiryDate) {
+      alert("Please set expiry date");
+      return;
+    }
+
     setProcessing(true);
 
     try {
@@ -268,6 +281,77 @@ function DocumentDetailsScreen({
     }
   };
 
+  const formatDate = (timestamp) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // Function to set expiry date
+  const setDocumentExpiry = async () => {
+    if (!expiryDate) {
+      alert("Please select an expiry date");
+      return;
+    }
+
+    try {
+      const expiryTimestamp = new Date(expiryDate).getTime();
+
+      if (documentType === "passenger_id") {
+        await updateDoc(doc(db, "users", userId), {
+          "studentDocument.expiryDate": expiryTimestamp,
+          updatedAt: Date.now(),
+        });
+      } else if (documentType === "insurance") {
+        await updateDoc(doc(db, "users", userId), {
+          [`driverData.documents.${documentType}.expiryDate`]: expiryTimestamp,
+          updatedAt: Date.now(),
+        });
+      }
+
+      alert("Expiry date set successfully");
+      setShowExpiryDialog(false);
+      loadDocumentDetails();
+    } catch (error) {
+      console.error("Error setting expiry date:", error);
+      alert("Failed to set expiry date");
+    }
+  };
+
+  // Function to request additional photos
+  const requestAdditionalPhoto = async () => {
+    if (!additionalPhotoType.trim()) {
+      alert("Please specify what photo is needed");
+      return;
+    }
+
+    try {
+      if (documentType === "passenger_id") {
+        await updateDoc(doc(db, "users", userId), {
+          "studentDocument.additionalPhotosRequired":
+            arrayUnion(additionalPhotoType),
+          updatedAt: Date.now(),
+        });
+      } else {
+        await updateDoc(doc(db, "users", userId), {
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]:
+            arrayUnion(additionalPhotoType),
+          updatedAt: Date.now(),
+        });
+      }
+
+      alert(`Requested additional photo: ${additionalPhotoType}`);
+      setShowAdditionalPhotoDialog(false);
+      setAdditionalPhotoType("");
+      loadDocumentDetails();
+    } catch (error) {
+      console.error("Error requesting additional photo:", error);
+      alert("Failed to request additional photo");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -302,6 +386,9 @@ function DocumentDetailsScreen({
   const uniqueImages = document.images
     ? [...new Map(document.images.map((img) => [img.url, img])).values()]
     : [];
+
+  const additionalPhotosRequired = document.additionalPhotosRequired || [];
+  const additionalPhotos = document.additionalPhotos || {};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -363,6 +450,66 @@ function DocumentDetailsScreen({
           )}
         </div>
 
+        {/* Additional Photos Section */}
+        {additionalPhotosRequired.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Additional Photos Requested ({additionalPhotosRequired.length})
+            </h2>
+
+            <div className="space-y-4">
+              {additionalPhotosRequired.map((photoType) => {
+                const photoUrl = additionalPhotos[photoType];
+                const isUploaded = !!photoUrl;
+
+                return (
+                  <div
+                    key={photoType}
+                    className="border border-gray-200 rounded-lg p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900 capitalize">
+                          {photoType.replace(/_/g, " ")}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {isUploaded ? "✓ Uploaded" : "⏳ Waiting for upload"}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          isUploaded
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {isUploaded ? "Received" : "Pending"}
+                      </span>
+                    </div>
+
+                    {isUploaded ? (
+                      <div className="rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={photoUrl}
+                          alt={photoType.replace(/_/g, " ")}
+                          className="w-full h-auto object-contain bg-gray-50"
+                          style={{ maxHeight: "400px" }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
+                        <p className="text-gray-500 text-sm">
+                          User has not uploaded this photo yet
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Document Information */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -387,6 +534,42 @@ function DocumentDetailsScreen({
                 })}
               </span>
             </div>
+
+            {document.expiryDate && (
+              <>
+                <InfoRow
+                  label="Expiry Date"
+                  value={formatDate(document.expiryDate)}
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Expiry Status</span>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      document.expiryDate < Date.now()
+                        ? "bg-red-100 text-red-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {document.expiryDate < Date.now() ? "Expired" : "Valid"}
+                  </span>
+                </div>
+                {document.expiryDate < Date.now() && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-700">
+                      ⚠️ This document expired on{" "}
+                      {formatDate(document.expiryDate)}
+                      {" ("}
+                      {Math.floor(
+                        (Date.now() - document.expiryDate) /
+                          (1000 * 60 * 60 * 24)
+                      )}{" "}
+                      days ago
+                      {")"}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Status */}
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
@@ -421,6 +604,26 @@ function DocumentDetailsScreen({
           </div>
         </div>
 
+        {/* Additional Actions */}
+        <div className="flex space-x-3 mt-3">
+          {(documentType === "passenger_id" ||
+            documentType === "insurance") && (
+            <button
+              onClick={() => setShowExpiryDialog(true)}
+              className="flex-1 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Set Expiry Date
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowAdditionalPhotoDialog(true)}
+            className="flex-1 px-4 py-2 border border-gray-600 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Request Additional Photo
+          </button>
+        </div>
+
         {/* Bottom Spacer for Fixed Action Bar */}
         <div className="h-24"></div>
       </div>
@@ -443,7 +646,7 @@ function DocumentDetailsScreen({
               </button>
               <button
                 onClick={approveDocument}
-                disabled={processing}
+                disabled={processing || !expiryDate}
                 className="flex-1 px-4 py-3 !bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 transition-colors"
               >
                 Approve Document
@@ -452,6 +655,72 @@ function DocumentDetailsScreen({
           )}
         </div>
       </div>
+
+      {/* Expiry Date Dialog */}
+      {showExpiryDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Set Expiry Date
+            </h3>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => setShowExpiryDialog(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={setDocumentExpiry}
+                className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Set Expiry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Additional Photo Dialog */}
+      {showAdditionalPhotoDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Request Additional Photo
+            </h3>
+            <input
+              type="text"
+              value={additionalPhotoType}
+              onChange={(e) => setAdditionalPhotoType(e.target.value)}
+              placeholder="e.g., 'Clear photo of front side'"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowAdditionalPhotoDialog(false);
+                  setAdditionalPhotoType("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={requestAdditionalPhoto}
+                className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Request Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -491,6 +760,15 @@ function StatusBadge({ status }) {
     >
       {config.text}
     </span>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-gray-600">{label}</span>
+      <span className="text-sm font-medium text-gray-900">{value}</span>
+    </div>
   );
 }
 

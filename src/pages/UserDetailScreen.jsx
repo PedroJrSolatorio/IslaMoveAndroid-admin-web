@@ -707,6 +707,29 @@ export default function UserDetailScreen({
           </div>
         </div>
 
+        {/* Driver Vehicle Information */}
+        {user.userType === "DRIVER" && user.driverData?.vehicleData && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Vehicle Information
+            </h3>
+            <div className="space-y-4">
+              {user.driverData.vehicleData.plateNumber && (
+                <InfoRow
+                  label="Plate Number"
+                  value={user.driverData.vehicleData.plateNumber}
+                />
+              )}
+              {user.driverData.vehicleData.color && (
+                <InfoRow
+                  label="Color"
+                  value={user.driverData.vehicleData.color}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Account Status Section */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -861,6 +884,38 @@ export default function UserDetailScreen({
           )}
         </div>
 
+        {/* Passenger ID Document */}
+        {user.userType === "PASSENGER" && user.studentDocument && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              ID Document
+            </h3>
+            <button
+              onClick={() =>
+                onNavigateToDocumentDetails(
+                  user.uid,
+                  "passenger_id",
+                  "Valid ID"
+                )
+              }
+              className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <FileText className="w-5 h-5 text-gray-600" />
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-900">Valid ID</p>
+                  <p className="text-xs text-gray-600">
+                    {user.studentDocument.school &&
+                      `${user.studentDocument.school} • `}
+                    Uploaded {formatDate(user.studentDocument.uploadedAt)}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+        )}
+
         {/* Driver Documents */}
         {user.userType === "DRIVER" && user.driverData && (
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -883,7 +938,11 @@ export default function UserDetailScreen({
                         <FileText className="w-5 h-5 text-gray-600" />
                         <div className="text-left">
                           <p className="text-sm font-medium text-gray-900">
-                            {docType.replace(/_/g, " ")}
+                            {docType === "insurance"
+                              ? "franchise certificate"
+                              : docType === "vehicle_inspection"
+                              ? "vehicle receipt"
+                              : docType.replace(/_/g, " ")}
                           </p>
                           <p className="text-xs text-gray-600">
                             {document.images?.length || 0} image(s) • Uploaded{" "}

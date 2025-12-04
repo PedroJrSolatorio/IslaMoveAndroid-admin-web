@@ -8,6 +8,7 @@ import {
   Settings,
   TrendingUp,
   LogOut,
+  RefreshCcw,
 } from "lucide-react";
 import { auth } from "../config/firebase";
 
@@ -15,6 +16,7 @@ export default function Sidebar({ currentScreen, setCurrentScreen, isOpen }) {
   const menuItems = [
     { id: "home", label: "Dashboard", icon: BarChart3 },
     { id: "verification", label: "User Verification", icon: CheckCircle },
+    { id: "renewal", label: "Document Renewal", icon: RefreshCcw },
     { id: "users", label: "Manage Users", icon: Users },
     { id: "monitoring", label: "Live Monitoring", icon: MapPin },
     { id: "config", label: "System Config", icon: Settings },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { ArrowLeft, FileText } from "lucide-react";
 import { db, auth } from "../config/firebase";
 
@@ -25,12 +25,17 @@ export default function DocumentDetailsScreen2({
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [expiryDate, setExpiryDate] = useState("");
+  const [showExpiryDialog, setShowExpiryDialog] = useState(false);
+  const [showAdditionalPhotoDialog, setShowAdditionalPhotoDialog] =
+    useState(false);
+  const [additionalPhotoType, setAdditionalPhotoType] = useState("");
 
   useEffect(() => {
-    loadDocument();
+    loadDocumentDetails();
   }, [userId, documentType]);
 
-  const loadDocument = async () => {
+  const loadDocumentDetails = async () => {
     try {
       setLoading(true);
       const userDoc = await getDoc(doc(db, "users", userId));
@@ -61,6 +66,10 @@ export default function DocumentDetailsScreen2({
           status: userData.studentDocument.status,
           rejectionReason: userData.studentDocument.rejectionReason || "",
           uploadedAt: userData.studentDocument.uploadedAt,
+          expiryDate: userData.studentDocument.expiryDate || null,
+          additionalPhotosRequired:
+            userData.studentDocument.additionalPhotosRequired || [],
+          additionalPhotos: userData.studentDocument.additionalPhotos || {},
         };
       } else if (userData.driverData?.documents?.[documentType]) {
         // Driver document
@@ -77,6 +86,11 @@ export default function DocumentDetailsScreen2({
   };
 
   const approveDocument = async () => {
+    if (!expiryDate) {
+      alert("Please set expiry date");
+      return;
+    }
+
     try {
       console.log("🔍 Approving document type:", documentType);
       setProcessing(true);
@@ -128,6 +142,35 @@ export default function DocumentDetailsScreen2({
           [`driverData.documents.${documentType}.rejectionReason`]: null,
           updatedAt: Date.now(),
         });
+
+        // Delete ONLY this specific document type from Cloudinary
+        try {
+          const tempUserId = user.email;
+          const idToken = await auth.currentUser.getIdToken();
+
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-specific-temp-doc`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({
+                tempUserId,
+                documentType,
+              }),
+            }
+          );
+
+          const data = await response.json();
+          console.log(
+            `✅ Deleted ${data.deletedCount} temp file(s) for ${documentType}`
+          );
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail rejection if deletion fails
+        }
 
         alert("Document approved successfully");
       }
@@ -202,34 +245,34 @@ export default function DocumentDetailsScreen2({
           updatedAt: Date.now(),
         });
 
-        // // Delete ONLY this specific document type from Cloudinary
-        // try {
-        //   const tempUserId = user.email;
-        //   const idToken = await auth.currentUser.getIdToken();
+        // Delete ONLY this specific document type from Cloudinary
+        try {
+          const tempUserId = user.email;
+          const idToken = await auth.currentUser.getIdToken();
 
-        //   const response = await fetch(
-        //     `${BACKEND_URL}/api/delete-specific-temp-doc`,
-        //     {
-        //       method: "POST",
-        //       headers: {
-        //         "Content-Type": "application/json",
-        //         Authorization: `Bearer ${idToken}`,
-        //       },
-        //       body: JSON.stringify({
-        //         tempUserId,
-        //         documentType,
-        //       }),
-        //     }
-        //   );
+          const response = await fetch(
+            `${BACKEND_URL}/api/delete-specific-temp-doc`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+              },
+              body: JSON.stringify({
+                tempUserId,
+                documentType,
+              }),
+            }
+          );
 
-        //   const data = await response.json();
-        //   console.log(
-        //     `✅ Deleted ${data.deletedCount} temp file(s) for ${documentType}`
-        //   );
-        // } catch (deleteError) {
-        //   console.error("⚠️ Failed to delete temp files:", deleteError);
-        //   // Don't fail rejection if deletion fails
-        // }
+          const data = await response.json();
+          console.log(
+            `✅ Deleted ${data.deletedCount} temp file(s) for ${documentType}`
+          );
+        } catch (deleteError) {
+          console.error("⚠️ Failed to delete temp files:", deleteError);
+          // Don't fail rejection if deletion fails
+        }
 
         alert("Document rejected");
       }
@@ -249,6 +292,69 @@ export default function DocumentDetailsScreen2({
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Function to set expiry date
+  const setDocumentExpiry = async () => {
+    if (!expiryDate) {
+      alert("Please select an expiry date");
+      return;
+    }
+
+    try {
+      const expiryTimestamp = new Date(expiryDate).getTime();
+
+      if (documentType === "passenger_id") {
+        await updateDoc(doc(db, "users", userId), {
+          "studentDocument.expiryDate": expiryTimestamp,
+          updatedAt: Date.now(),
+        });
+      } else if (documentType === "insurance") {
+        await updateDoc(doc(db, "users", userId), {
+          [`driverData.documents.${documentType}.expiryDate`]: expiryTimestamp,
+          updatedAt: Date.now(),
+        });
+      }
+
+      alert("Expiry date set successfully");
+      setShowExpiryDialog(false);
+      loadDocumentDetails();
+    } catch (error) {
+      console.error("Error setting expiry date:", error);
+      alert("Failed to set expiry date");
+    }
+  };
+
+  // Function to request additional photos
+  const requestAdditionalPhoto = async () => {
+    if (!additionalPhotoType.trim()) {
+      alert("Please specify what photo is needed");
+      return;
+    }
+
+    try {
+      if (documentType === "passenger_id") {
+        await updateDoc(doc(db, "users", userId), {
+          "studentDocument.additionalPhotosRequired":
+            arrayUnion(additionalPhotoType),
+          updatedAt: Date.now(),
+        });
+      } else {
+        await updateDoc(doc(db, "users", userId), {
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]:
+            arrayUnion(additionalPhotoType),
+          updatedAt: Date.now(),
+        });
+      }
+
+      alert(`Requested additional photo: ${additionalPhotoType}`);
+      setShowAdditionalPhotoDialog(false);
+      setAdditionalPhotoType("");
+      loadDocumentDetails();
+    } catch (error) {
+      console.error("Error requesting additional photo:", error);
+      alert("Failed to request additional photo");
+    }
   };
 
   if (loading) {
@@ -272,6 +378,9 @@ export default function DocumentDetailsScreen2({
     document.images?.filter(
       (img, index, self) => index === self.findIndex((t) => t.url === img.url)
     ) || [];
+
+  const additionalPhotosRequired = document.additionalPhotosRequired || [];
+  const additionalPhotos = document.additionalPhotos || {};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -331,18 +440,119 @@ export default function DocumentDetailsScreen2({
           )}
         </div>
 
+        {/* Additional Photos Section */}
+        {additionalPhotosRequired.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Additional Photos Requested ({additionalPhotosRequired.length})
+            </h2>
+
+            <div className="space-y-4">
+              {additionalPhotosRequired.map((photoType) => {
+                const photoUrl = additionalPhotos[photoType];
+                const isUploaded = !!photoUrl;
+
+                return (
+                  <div
+                    key={photoType}
+                    className="border border-gray-200 rounded-lg p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900 capitalize">
+                          {photoType.replace(/_/g, " ")}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {isUploaded ? "✓ Uploaded" : "⏳ Waiting for upload"}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          isUploaded
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {isUploaded ? "Received" : "Pending"}
+                      </span>
+                    </div>
+
+                    {isUploaded ? (
+                      <div className="rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={photoUrl}
+                          alt={photoType.replace(/_/g, " ")}
+                          className="w-full h-auto object-contain bg-gray-50"
+                          style={{ maxHeight: "400px" }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
+                        <p className="text-gray-500 text-sm">
+                          User has not uploaded this photo yet
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Document Information */}
         <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
           <h2 className="text-lg font-semibold mb-4">Document Information</h2>
 
           <InfoRow
             label="Document Type"
-            value={documentTitle.replace(/_/g, " ")}
+            value={
+              documentType === "insurance"
+                ? "franchise certificate"
+                : documentType === "vehicle_inspection"
+                ? "vehicle receipt"
+                : documentTitle.replace(/_/g, " ")
+            }
           />
           <InfoRow
             label="Upload Date"
             value={formatDate(document.uploadedAt)}
           />
+
+          {document.expiryDate && (
+            <>
+              <InfoRow
+                label="Expiry Date"
+                value={formatDate(document.expiryDate)}
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Expiry Status</span>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    document.expiryDate < Date.now()
+                      ? "bg-red-100 text-red-700"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {document.expiryDate < Date.now() ? "Expired" : "Valid"}
+                </span>
+              </div>
+              {document.expiryDate < Date.now() && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-700">
+                    ⚠️ This document expired on{" "}
+                    {formatDate(document.expiryDate)}
+                    {" ("}
+                    {Math.floor(
+                      (Date.now() - document.expiryDate) / (1000 * 60 * 60 * 24)
+                    )}{" "}
+                    days ago
+                    {")"}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Status</span>
@@ -392,6 +602,26 @@ export default function DocumentDetailsScreen2({
               )}
           </div>
         </div>
+
+        {/* Additional Actions */}
+        <div className="flex space-x-3 mt-3">
+          {(documentType === "passenger_id" ||
+            documentType === "insurance") && (
+            <button
+              onClick={() => setShowExpiryDialog(true)}
+              className="flex-1 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Set Expiry Date
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowAdditionalPhotoDialog(true)}
+            className="flex-1 px-4 py-2 border border-gray-600 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Request Additional Photo
+          </button>
+        </div>
       </div>
 
       {/* Action Buttons */}
@@ -407,7 +637,7 @@ export default function DocumentDetailsScreen2({
             </button>
             <button
               onClick={approveDocument}
-              disabled={processing}
+              disabled={processing || !expiryDate}
               className="flex-1 px-6 py-3 !bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {processing ? "Processing..." : "Approve Document"}
@@ -423,6 +653,72 @@ export default function DocumentDetailsScreen2({
               <p className="text-lg font-medium text-green-700">
                 ✓ Document Approved
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expiry Date Dialog */}
+      {showExpiryDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Set Expiry Date
+            </h3>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => setShowExpiryDialog(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={setDocumentExpiry}
+                className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Set Expiry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Additional Photo Dialog */}
+      {showAdditionalPhotoDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Request Additional Photo
+            </h3>
+            <input
+              type="text"
+              value={additionalPhotoType}
+              onChange={(e) => setAdditionalPhotoType(e.target.value)}
+              placeholder="e.g., 'Clear photo of front side'"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowAdditionalPhotoDialog(false);
+                  setAdditionalPhotoType("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={requestAdditionalPhoto}
+                className="flex-1 px-4 py-2 !bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Request Photo
+              </button>
             </div>
           </div>
         </div>

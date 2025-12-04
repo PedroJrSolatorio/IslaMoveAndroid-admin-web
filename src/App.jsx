@@ -22,6 +22,7 @@ import AnalyticsScreen from "./pages/AnalyticsScreen";
 import UserDetailScreen from "./pages/UserDetailScreen";
 import DocumentDetailsScreen2 from "./pages/DocumentDetailsScreen2";
 import TripHistoryScreen from "./pages/TripHistoryScreen";
+import RenewalScreen from "./pages/RenewalScreen";
 
 // ==================== MAIN APP ====================
 export default function AdminDashboard() {
@@ -210,6 +211,25 @@ export default function AdminDashboard() {
         return (
           <ManageUsersScreen
             onNavigateToUserDetail={(userId) => {
+              setSelectedUserId(userId);
+              setCurrentScreen("userDetail");
+            }}
+          />
+        );
+
+      case "renewal":
+        return (
+          <RenewalScreen
+            onNavigateToDocumentDetails={(userId, docType, docTitle) => {
+              setNavigationState({
+                userId,
+                documentType: docType,
+                documentTitle: docTitle,
+                userType: null,
+              });
+              setCurrentScreen("documentDetails2");
+            }}
+            onNavigateToUserDetails={(userId) => {
               setSelectedUserId(userId);
               setCurrentScreen("userDetail");
             }}
