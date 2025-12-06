@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { User, Search, Flag, MessageSquare, ChevronDown } from "lucide-react";
 import { db } from "../config/firebase";
+import ScheduledDeletionsView from "./ScheduledDeletionsView";
 
 // Enums matching Android
 const UserFilter = { ALL: "ALL", PASSENGER: "PASSENGER", DRIVER: "DRIVER" };
@@ -48,6 +49,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   const [isStatusDropdownExpanded, setIsStatusDropdownExpanded] =
     useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeView, setActiveView] = useState("users");
   const [currentPage, setCurrentPage] = useState(0); // ✅ Pagination state
 
   // ✅ Load users with real-time updates (metadata changes disabled)
@@ -400,6 +402,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           {/* User Type Filters */}
           <button
             onClick={() => {
+              setActiveView("users");
               setSelectedFilter(UserFilter.ALL);
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
@@ -414,6 +417,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           </button>
           <button
             onClick={() => {
+              setActiveView("users");
               setSelectedFilter(UserFilter.PASSENGER);
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
@@ -428,6 +432,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
           </button>
           <button
             onClick={() => {
+              setActiveView("users");
               setSelectedFilter(UserFilter.DRIVER);
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
@@ -459,6 +464,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
                   <button
                     key={filter}
                     onClick={() => {
+                      setActiveView("users");
                       setSelectedStatusFilter(filter);
                       setIsStatusDropdownExpanded(false);
                       setCurrentPage(0);
@@ -471,101 +477,116 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               </div>
             )}
           </div>
+
+          <button
+            onClick={() => setActiveView("deletions")}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              activeView === "deletions"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Scheduled Deletions
+          </button>
         </div>
       </div>
 
       {/* Users List */}
-      <div className="space-y-3">
-        {paginatedUsers.map((user) => {
-          const statusBadge = getStatusBadge(user);
-          const reportCount =
-            user.userType === "DRIVER"
-              ? driverReportCounts[user.uid] || 0
-              : passengerReportCounts[user.uid] || 0;
-          const commentCount = userCommentCounts[user.uid] || 0;
+      {activeView === "deletions" ? (
+        <ScheduledDeletionsView />
+      ) : (
+        <div className="space-y-3">
+          {paginatedUsers.map((user) => {
+            const statusBadge = getStatusBadge(user);
+            const reportCount =
+              user.userType === "DRIVER"
+                ? driverReportCounts[user.uid] || 0
+                : passengerReportCounts[user.uid] || 0;
+            const commentCount = userCommentCounts[user.uid] || 0;
 
-          return (
-            <div
-              key={user.uid}
-              className="bg-white rounded-lg shadow-sm p-3 lg:p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => onNavigateToUserDetail(user.uid)}
-            >
-              <div className="flex items-center justify-between">
-                {/* Left: User Info */}
-                <div className="flex items-center space-x-3">
-                  {/* Profile Image */}
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center border border-gray-300">
-                    {user.profileImageUrl ? (
-                      <img
-                        src={user.profileImageUrl}
-                        alt={user.displayName}
-                        className="w-full h-full rounded-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          e.target.nextSibling.style.display = "flex";
-                        }}
-                      />
-                    ) : null}
-                    <span className="text-gray-600 font-medium text-sm">
-                      {user.displayName?.charAt(0)?.toUpperCase() || "?"}
+            return (
+              <div
+                key={user.uid}
+                className="bg-white rounded-lg shadow-sm p-3 lg:p-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => onNavigateToUserDetail(user.uid)}
+              >
+                <div className="flex items-center justify-between">
+                  {/* Left: User Info */}
+                  <div className="flex items-center space-x-3">
+                    {/* Profile Image */}
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center border border-gray-300">
+                      {user.profileImageUrl ? (
+                        <img
+                          src={user.profileImageUrl}
+                          alt={user.displayName}
+                          className="w-full h-full rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <span className="text-gray-600 font-medium text-sm">
+                        {user.displayName?.charAt(0)?.toUpperCase() || "?"}
+                      </span>
+                    </div>
+
+                    {/* User Details */}
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {user.displayName || "No Name"}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {user.userType === "DRIVER"
+                          ? "Driver"
+                          : user.userType === "ADMIN"
+                          ? "Admin"
+                          : "Passenger"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Badges and Status */}
+                  <div className="flex items-center space-x-2">
+                    {/* Report Badge */}
+                    {reportCount > 0 && (
+                      <>
+                        <Flag className="w-4 h-4 text-orange-600" />
+                        <span className="text-xs font-bold text-orange-600">
+                          {reportCount}
+                        </span>
+                      </>
+                    )}
+
+                    {/* Comment Badge */}
+                    {commentCount > 0 && (
+                      <>
+                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs font-bold text-blue-600">
+                          {commentCount}
+                        </span>
+                      </>
+                    )}
+
+                    {/* Status Badge */}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.bg} ${statusBadge.text}`}
+                    >
+                      {statusBadge.label}
                     </span>
                   </div>
-
-                  {/* User Details */}
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {user.displayName || "No Name"}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {user.userType === "DRIVER"
-                        ? "Driver"
-                        : user.userType === "ADMIN"
-                        ? "Admin"
-                        : "Passenger"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Badges and Status */}
-                <div className="flex items-center space-x-2">
-                  {/* Report Badge */}
-                  {reportCount > 0 && (
-                    <>
-                      <Flag className="w-4 h-4 text-orange-600" />
-                      <span className="text-xs font-bold text-orange-600">
-                        {reportCount}
-                      </span>
-                    </>
-                  )}
-
-                  {/* Comment Badge */}
-                  {commentCount > 0 && (
-                    <>
-                      <MessageSquare className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-bold text-blue-600">
-                        {commentCount}
-                      </span>
-                    </>
-                  )}
-
-                  {/* Status Badge */}
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.bg} ${statusBadge.text}`}
-                  >
-                    {statusBadge.label}
-                  </span>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No users found matching your criteria
-          </div>
-        )}
-      </div>
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No users found matching your criteria
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ✅ Pagination Controls */}
       {totalPages > 1 && (

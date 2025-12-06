@@ -114,13 +114,16 @@ export default function DocumentDetailsScreen2({
       return;
     }
 
-    try {
-      console.log("🔍 Approving document type:", documentType);
-      setProcessing(true);
+    setProcessing(true);
 
+    try {
       if (documentType === "passenger_id") {
         await updateDoc(doc(db, "users", userId), {
           "studentDocument.status": DocumentStatus.APPROVED,
+          "studentDocument.verificationDate": Date.now(),
+          "studentDocument.rejectionReason": null,
+          "studentDocument.additionalPhotosRequired": [],
+          "studentDocument.additionalPhotos": {},
           updatedAt: Date.now(),
         });
 
@@ -163,6 +166,8 @@ export default function DocumentDetailsScreen2({
           [`driverData.documents.${documentType}.status`]:
             DocumentStatus.APPROVED,
           [`driverData.documents.${documentType}.rejectionReason`]: null,
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]: [],
+          [`driverData.documents.${documentType}.additionalPhotos`]: {},
           updatedAt: Date.now(),
         });
 
@@ -221,6 +226,9 @@ export default function DocumentDetailsScreen2({
         await updateDoc(doc(db, "users", userId), {
           "studentDocument.status": DocumentStatus.REJECTED,
           "studentDocument.rejectionReason": comments,
+          "studentDocument.verificationDate": Date.now(),
+          "studentDocument.additionalPhotosRequired": [],
+          "studentDocument.additionalPhotos": {},
           updatedAt: Date.now(),
         });
 
@@ -265,6 +273,8 @@ export default function DocumentDetailsScreen2({
           [`driverData.documents.${documentType}.status`]:
             DocumentStatus.REJECTED,
           [`driverData.documents.${documentType}.rejectionReason`]: comments,
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]: [],
+          [`driverData.documents.${documentType}.additionalPhotos`]: {},
           updatedAt: Date.now(),
         });
 

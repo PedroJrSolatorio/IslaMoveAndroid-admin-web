@@ -131,6 +131,8 @@ function DocumentDetailsScreen({
           "studentDocument.status": DocumentStatus.APPROVED,
           "studentDocument.verificationDate": Date.now(),
           "studentDocument.rejectionReason": null,
+          "studentDocument.additionalPhotosRequired": [],
+          "studentDocument.additionalPhotos": {},
           updatedAt: Date.now(),
         });
 
@@ -174,6 +176,8 @@ function DocumentDetailsScreen({
           [`driverData.documents.${documentType}.status`]:
             DocumentStatus.APPROVED,
           [`driverData.documents.${documentType}.rejectionReason`]: null,
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]: [],
+          [`driverData.documents.${documentType}.additionalPhotos`]: {},
           updatedAt: Date.now(),
         });
 
@@ -205,6 +209,8 @@ function DocumentDetailsScreen({
           "studentDocument.status": DocumentStatus.REJECTED,
           "studentDocument.rejectionReason": comments.trim(),
           "studentDocument.verificationDate": Date.now(),
+          "studentDocument.additionalPhotosRequired": [],
+          "studentDocument.additionalPhotos": {},
           updatedAt: Date.now(),
         });
 
@@ -251,6 +257,8 @@ function DocumentDetailsScreen({
             DocumentStatus.REJECTED,
           [`driverData.documents.${documentType}.rejectionReason`]:
             comments.trim(),
+          [`driverData.documents.${documentType}.additionalPhotosRequired`]: [],
+          [`driverData.documents.${documentType}.additionalPhotos`]: {},
           updatedAt: Date.now(),
         });
 
