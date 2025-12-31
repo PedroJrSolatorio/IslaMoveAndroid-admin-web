@@ -290,7 +290,8 @@ export default function ScheduledDeletionsView() {
                         Pending Deletion
                       </div>
                       <span className="text-xs text-gray-500">
-                        ID: {user.uid.substring(0, 8)}...
+                        {/* ID: {user.uid.substring(0, 8)}... */}
+                        ID: {user.uid}
                       </span>
                     </div>
                   </div>
