@@ -83,11 +83,11 @@ export default function AdminDashboard() {
     documentTitle,
     userType
   ) => {
-    console.log("=== NAVIGATE TO DOCUMENT ===");
-    console.log("userId:", userId);
-    console.log("documentType:", documentType);
-    console.log("documentTitle:", documentTitle);
-    console.log("userType:", userType);
+    // console.log("=== NAVIGATE TO DOCUMENT ===");
+    // console.log("userId:", userId);
+    // console.log("documentType:", documentType);
+    // console.log("documentTitle:", documentTitle);
+    // console.log("userType:", userType);
 
     setNavigationState({
       userId,
@@ -100,9 +100,9 @@ export default function AdminDashboard() {
   };
 
   const handleNavigateBack = () => {
-    console.log("=== NAVIGATE BACK ===");
-    console.log("Current screen:", currentScreen);
-    console.log("Current navigationState:", navigationState);
+    // console.log("=== NAVIGATE BACK ===");
+    // console.log("Current screen:", currentScreen);
+    // console.log("Current navigationState:", navigationState);
 
     if (currentScreen === "document") {
       // From document back to details
@@ -123,11 +123,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  const handleCloseSidebar = () => {
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const handleSetCurrentScreen = (screen) => {
+    setCurrentScreen(screen);
+
+    //reset navigation state when changing main screens
+    if (screen !== "details" && screen !== "document") {
+      setNavigationState({
+        userId: null,
+        documentType: null,
+        documentTitle: null,
+        userType: null,
+        isStudentVerification: false,
+      });
+    }
+  };
+
   // Helper function to render the current screen
   const renderScreen = () => {
     switch (currentScreen) {
       case "home":
-        return <HomeScreen onNavigate={setCurrentScreen} />;
+        return <HomeScreen onNavigate={handleSetCurrentScreen} />;
 
       case "verification":
         return (
@@ -135,8 +160,6 @@ export default function AdminDashboard() {
         );
 
       case "details":
-        console.log("=== RENDERING DETAILS ===");
-        console.log("navigationState:", navigationState);
         return (
           <DriverDetailsScreen
             driverId={navigationState.userId}
@@ -270,35 +293,28 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen w-screen bg-gray-50 overflow-hidden">
       <Sidebar
         currentScreen={currentScreen}
-        setCurrentScreen={(screen) => {
-          setCurrentScreen(screen);
-          // Reset navigation state when changing main screens
-          if (screen !== "details" && screen !== "document") {
-            setNavigationState({
-              userId: null,
-              documentType: null,
-              documentTitle: null,
-              userType: null,
-              isStudentVerification: false,
-            });
-          }
-        }}
+        setCurrentScreen={handleSetCurrentScreen}
         isOpen={isSidebarOpen}
+        onClose={handleCloseSidebar}
       />
       <div
-        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-64" : "lg:ml-20"
-        }`}
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 
+          ${/* Mobile: No margin (full width) */ ""}
+          ${/* Desktop: Left margin matches sidebar width */ ""}
+          ${isSidebarOpen ? "lg:ml-64" : "lg:ml-20"}
+          `}
       >
         <Header
           currentUser={currentUser}
-          toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          toggleSidebar={handleToggleSidebar}
           isSidebarOpen={isSidebarOpen}
         />
-        <div className="flex-1 overflow-auto">{renderScreen()}</div>
+        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+          {renderScreen()}
+        </div>
       </div>
     </div>
   );

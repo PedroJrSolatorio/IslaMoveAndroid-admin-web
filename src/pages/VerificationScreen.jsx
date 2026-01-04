@@ -143,7 +143,7 @@ function VerificationScreen({ onNavigateToDetails }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-4 lg:space-y-6">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6">
         <h1 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-4">
@@ -152,13 +152,13 @@ function VerificationScreen({ onNavigateToDetails }) {
 
         {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 lg:w-5 lg:h-5" />
           <input
             type="text"
             placeholder="Search by name or date..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 lg:pl-10 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base"
           />
         </div>
       </div>
@@ -167,20 +167,20 @@ function VerificationScreen({ onNavigateToDetails }) {
       <div className="flex flex-wrap gap-2 mt-4">
         <button
           onClick={() => setFilterType("ALL")}
-          className={`px-3 py-1 rounded-full border ${
+          className={`px-3 py-1.5 lg:px-4 lg:py-2 text-sm lg:text-base rounded-full border transition-colors ${
             filterType === "ALL"
-              ? "!bg-blue-600 text-white"
-              : "bg-white text-gray-700"
+              ? "!bg-blue-600 text-white !border-blue-600"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
           }`}
         >
           All
         </button>
         <button
           onClick={() => setFilterType("DRIVER")}
-          className={`px-3 py-1 rounded-full border ${
+          className={`px-3 py-1.5 lg:px-4 lg:py-2 text-sm lg:text-base rounded-full border ${
             filterType === "DRIVER"
-              ? "!bg-blue-600 text-white"
-              : "bg-white text-gray-700"
+              ? "!bg-blue-600 text-white !border-blue-600"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
           }`}
         >
           Drivers
@@ -189,8 +189,8 @@ function VerificationScreen({ onNavigateToDetails }) {
           onClick={() => setFilterType("PASSENGER")}
           className={`px-3 py-1 rounded-full border ${
             filterType === "PASSENGER"
-              ? "!bg-blue-600 text-white"
-              : "bg-white text-gray-700"
+              ? "!bg-blue-600 text-white !border-blue-600"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
           }`}
         >
           Passengers
@@ -199,12 +199,12 @@ function VerificationScreen({ onNavigateToDetails }) {
 
       {/* Empty State */}
       {filteredDrivers.length === 0 && filteredPassengers.length === 0 && (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <div className="bg-white rounded-lg shadow-sm p-8 lg:p-12 text-center">
+          <User className="w-12 h-12 lg:w-16 lg:h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-base lg:text-lg font-medium text-gray-900 mb-2">
             No pending verifications
           </h3>
-          <p className="text-gray-600 max-w-md mx-auto">
+          <p className="text-sm lg:text-base text-gray-600 max-w-md mx-auto">
             User verifications including driver applications, student documents,
             and profile reviews will appear here
           </p>
@@ -263,12 +263,12 @@ function DriverApplicationCard({ driver, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+      className="border border-gray-200 rounded-lg p-3 lg:p-4 hover:bg-gray-50 cursor-pointer transition-colors"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center space-x-3 lg:space-x-4 min-w-0 flex-1">
           {/* Profile Image */}
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">
             {driver.profileImageUrl ? (
               <img
                 src={driver.profileImageUrl}
@@ -283,18 +283,18 @@ function DriverApplicationCard({ driver, onClick }) {
           </div>
 
           {/* Driver Info */}
-          <div>
-            <h3 className="font-medium text-gray-900">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-medium text-sm lg:text-base text-gray-900 truncate">
               {driver.displayName || "Unknown User"}
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text:xs lg:text-sm text-gray-600 truncate">
               Submitted: {formatDate(driver.createdAt)}
             </p>
           </div>
         </div>
 
         {/* Arrow Icon */}
-        <ArrowRight className="w-5 h-5 text-gray-400" />
+        <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" />
       </div>
     </div>
   );

@@ -43,14 +43,18 @@ function QuickActionCard({
   return (
     <button
       onClick={onClick}
-      className={`${colors[color]} border-2 rounded-lg p-4 text-left hover:shadow-md transition-all w-full`}
+      className={`${colors[color]} border-2 rounded-lg p-3 lg:p-4 text-left hover:shadow-md transition-all w-full`}
     >
-      <div className="flex items-start space-x-3">
-        <Icon className="w-6 h-6 mt-1" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <p className="text-2xl font-bold my-1">{count}</p>
-          <p className="text-sm opacity-75">{description}</p>
+      <div className="flex items-start space-x-2 lg:space-x-3">
+        <Icon className="w-5 h-5 lg:w-6 lg:h-6 mt-1" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-sm lg:text-base text-gray-900">
+            {title}
+          </h3>
+          <p className="text-xl lg:text-2xl font-bold my-1">{count}</p>
+          <p className="text:xs lg:text-sm opacity-75 line-clamp-2">
+            {description}
+          </p>
         </div>
       </div>
     </button>
@@ -340,16 +344,16 @@ export default function HomeScreen({ onNavigate }) {
           };
 
           return (
-            <div key={index} className="bg-white rounded-lg shadow p-6">
+            <div key={index} className="bg-white rounded-lg shadow p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
+                  <p className="text-2xl lg:text-3xl font-bold text-gray-900 mt-2">
                     {stat.value}
                   </p>
                 </div>
-                <div className={`${colors[stat.color]} p-3 rounded-lg`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className={`${colors[stat.color]} p-2 lg:p-3 rounded-lg`}>
+                  <Icon className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
                 </div>
               </div>
             </div>
@@ -361,8 +365,8 @@ export default function HomeScreen({ onNavigate }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Live Status */}
         <div className="bg-white rounded-lg shadow p-4 lg:p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+          <h2 className="text:base lg:text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-green-600" />
             Live Status
           </h2>
           <div className="space-y-4">

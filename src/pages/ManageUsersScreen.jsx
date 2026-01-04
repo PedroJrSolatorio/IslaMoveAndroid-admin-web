@@ -224,7 +224,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
       a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase())
     );
 
-  // ✅ Pagination
+  // Pagination
   const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
   const paginatedUsers = filteredUsers.slice(
     currentPage * PAGE_SIZE,
@@ -369,20 +369,22 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Manage Users</h1>
-        <p className="text-sm text-gray-600 mt-1">
+      <div className="mb-4 lg:mb-6">
+        <h1 className="text-xl lg:text-2xl font-semibold text-gray-900">
+          Manage Users
+        </h1>
+        <p className="text-xs lg:text-sm text-gray-600 mt-1">
           Showing {paginatedUsers.length} of {filteredUsers.length} users (Page{" "}
           {currentPage + 1}/{totalPages || 1})
         </p>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-s lg:p-4 mb-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 lg:w-5 lg:h-5" />
           <input
             type="text"
             placeholder="Search users by name, email..."
@@ -391,13 +393,13 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               setSearchQuery(e.target.value);
               setCurrentPage(0); // Reset to first page
             }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 lg:pl-10 pr-4 py-2 lg:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm lg:text-base"
           />
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-3 lg:p-4 mb-4">
         <div className="flex items-center space-x-2 flex-wrap gap-2">
           {/* User Type Filters */}
           <button
@@ -407,7 +409,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
             }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.ALL
                 ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -422,7 +424,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
             }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.PASSENGER
                 ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -437,7 +439,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               setSelectedStatusFilter(StatusFilter.ALL);
               setCurrentPage(0);
             }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-colors ${
               selectedFilter === UserFilter.DRIVER
                 ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -495,7 +497,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
       {activeView === "deletions" ? (
         <ScheduledDeletionsView />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 lg:space-y-3">
           {paginatedUsers.map((user) => {
             const statusBadge = getStatusBadge(user);
             const reportCount =
@@ -510,11 +512,11 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
                 className="bg-white rounded-lg shadow-sm p-3 lg:p-4 hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => onNavigateToUserDetail(user.uid)}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   {/* Left: User Info */}
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
                     {/* Profile Image */}
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center border border-gray-300">
+                    <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-gray-200 flex items-center justify-center border border-gray-300 flex-shrink-0">
                       {user.profileImageUrl ? (
                         <img
                           src={user.profileImageUrl}
@@ -532,11 +534,11 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
                     </div>
 
                     {/* User Details */}
-                    <div>
-                      <p className="font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm lg:text-base text-gray-900 truncate">
                         {user.displayName || "No Name"}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs lg:text-sm text-gray-600 truncate">
                         {user.userType === "DRIVER"
                           ? "Driver"
                           : user.userType === "ADMIN"
@@ -547,15 +549,15 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
                   </div>
 
                   {/* Right: Badges and Status */}
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-1.5 lg:gap-2 justify-end">
                     {/* Report Badge */}
                     {reportCount > 0 && (
-                      <>
-                        <Flag className="w-4 h-4 text-orange-600" />
+                      <div className="flex items-center gap-1">
+                        <Flag className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-orange-600" />
                         <span className="text-xs font-bold text-orange-600">
                           {reportCount}
                         </span>
-                      </>
+                      </div>
                     )}
 
                     {/* Comment Badge */}
@@ -570,7 +572,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
 
                     {/* Status Badge */}
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge.bg} ${statusBadge.text}`}
+                      className={`px-2 py-1 lg:px-3 rounded-full text-xs font-medium whitespace-nowrap ${statusBadge.bg} ${statusBadge.text}`}
                     >
                       {statusBadge.label}
                     </span>
@@ -590,15 +592,15 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
 
       {/* ✅ Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-4 mt-6">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 mt-6">
           <button
             onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
             disabled={currentPage === 0}
-            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-4 py-2 bg-white rounded-lg shadow text-sm lg:text-base hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-xs lg:text-sm text-gray-600">
             Page {currentPage + 1} of {totalPages}
           </span>
           <button
@@ -606,7 +608,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
               setCurrentPage((p) => Math.min(totalPages - 1, p + 1))
             }
             disabled={currentPage >= totalPages - 1}
-            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto px-4 py-2 bg-white rounded-lg shadow text-sm lg:text-base hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
