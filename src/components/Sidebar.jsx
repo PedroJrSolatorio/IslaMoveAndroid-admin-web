@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { auth } from "../config/firebase";
+import launcherIcon from "../assets/ic_launcher.png";
 
 export default function Sidebar({
   currentScreen,
@@ -71,14 +72,14 @@ export default function Sidebar({
             {/* Logo */}
             {!isOpen ? (
               <img
-                src="../src/assets/ic_launcher.png"
+                src={launcherIcon}
                 alt="Islamove Logo"
                 className="w-8 h-8 object-contain hidden lg:block"
               />
             ) : (
               <>
                 <img
-                  src="../src/assets/ic_launcher.png"
+                  src={launcherIcon}
                   alt="Islamove Logo"
                   className="w-8 h-8 object-contain"
                 />
