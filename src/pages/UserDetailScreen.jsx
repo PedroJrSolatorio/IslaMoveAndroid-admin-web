@@ -718,7 +718,7 @@ export default function UserDetailScreen({
             <div className="space-y-4">
               {user.driverData.vehicleData.plateNumber && (
                 <InfoRow
-                  label="Plate Number"
+                  label="Body Number"
                   value={user.driverData.vehicleData.plateNumber}
                 />
               )}
