@@ -575,7 +575,9 @@ export default function UserDetailScreen({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">User Details</h1>
+          <h1 className="text-2xl! md:text-4xl! font-semibold text-gray-900">
+            User Details
+          </h1>
         </div>
       </div>
 

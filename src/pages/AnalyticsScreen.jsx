@@ -358,7 +358,7 @@ export default function AnalyticsScreen() {
           </h1>
         </div>
 
-        <div className="flex justify-center mb-6 space-x-2">
+        <div className="flex flex-wrap justify-center mb-6 space-x-2">
           {Object.values(TimePeriod).map((period) => (
             <button
               key={period}

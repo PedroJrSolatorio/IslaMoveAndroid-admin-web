@@ -34,7 +34,9 @@ export default function SystemConfigScreen() {
       <div className="bg-white shadow-sm border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Map Management</h1>
+            <h1 className="text-4xl! md:text-5xl! font-bold text-gray-900">
+              Map Management
+            </h1>
             <p className="text-sm text-gray-600">
               Manage destinations and zone boundaries
             </p>

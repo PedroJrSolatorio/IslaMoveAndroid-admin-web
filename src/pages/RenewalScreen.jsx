@@ -185,7 +185,7 @@ export default function RenewalScreen({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Document Renewal</h1>
+          <h1 className="font-bold text-gray-900">Document Renewal</h1>
           <p className="text-gray-600 mt-1">
             Manage expired documents and renewal requests
           </p>

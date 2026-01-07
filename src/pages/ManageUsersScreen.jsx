@@ -372,9 +372,7 @@ export default function ManageUsersScreen({ onNavigateToUserDetail }) {
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
       {/* Header */}
       <div className="mb-4 lg:mb-6">
-        <h1 className="text-xl lg:text-2xl font-semibold text-gray-900">
-          Manage Users
-        </h1>
+        <h1 className="font-semibold text-gray-900">Manage Users</h1>
         <p className="text-xs lg:text-sm text-gray-600 mt-1">
           Showing {paginatedUsers.length} of {filteredUsers.length} users (Page{" "}
           {currentPage + 1}/{totalPages || 1})

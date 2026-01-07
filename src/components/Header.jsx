@@ -13,7 +13,7 @@ export default function Header({ currentUser, toggleSidebar, isSidebarOpen }) {
           >
             <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <h1 className="!text-lg md:!text-2xl lg:!text-5xl font-semibold text-gray-900">
+          <h1 className="text-3xl md:text-5xl! font-semibold text-gray-900">
             Admin Dashboard
           </h1>
         </div>

@@ -329,7 +329,7 @@ function DriverDetailsScreen({
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-2xl! md:text-4xl! font-semibold text-gray-900">
               {isStudentVerification ? "ID Verification" : "Driver Application"}
             </h1>
           </div>
@@ -337,7 +337,7 @@ function DriverDetailsScreen({
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-6 pt-8 pb-12 sm:pb-8 space-y-6">
         {/* Profile Section */}
         <ProfileSection driver={driver} />
 

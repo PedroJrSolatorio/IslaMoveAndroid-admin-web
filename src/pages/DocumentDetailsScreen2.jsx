@@ -441,7 +441,7 @@ export default function DocumentDetailsScreen2({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-2xl! md:text-4xl! font-semibold text-gray-900">
             Document Details
           </h1>
         </div>

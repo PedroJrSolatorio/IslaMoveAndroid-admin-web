@@ -143,7 +143,7 @@ function VerificationScreen({ onNavigateToDetails }) {
   }
 
   return (
-    <div className="space-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6">
         <h1 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-4">
